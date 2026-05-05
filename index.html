@@ -1,0 +1,2069 @@
+﻿<!DOCTYPE html>
+<html lang="es" class="light">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Registro TC v11 — Servicio de Imágenes</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { darkbg: '#0f172a', darkpanel: '#1e293b', darkborder: '#334155' } } }
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: #eef1f5;
+            min-height: 100vh;
+        }
+
+        .dark body {
+            background: #0f172a;
+            color: #f8fafc;
+        }
+
+        .mono {
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        .scale-content {
+            zoom: 0.90;
+        }
+
+        /* ── Form fields ── */
+        .field {
+            width: 100%;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-size: 14px;
+            background: #fff;
+            color: #1e293b;
+            transition: all 0.15s;
+        }
+
+        .dark .field {
+            background: #1e293b;
+            border-color: #334155;
+            color: #f8fafc;
+        }
+
+        .field:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
+
+        /* ── Table & Scroll ── */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .table-wrapper table {
+            width: 100%;
+            min-width: 1400px;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #0f172a;
+            color: #94a3b8;
+        }
+
+        .dark thead th {
+            background: #020617;
+            color: #64748b;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 99px;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+
+        /* ── Toggle Switch (Contraste) ── */
+        .toggle-track {
+            width: 48px;
+            height: 26px;
+            background: #cbd5e1;
+            border-radius: 99px;
+            position: relative;
+            cursor: pointer;
+            transition: background .2s;
+        }
+
+        .dark .toggle-track {
+            background: #475569;
+        }
+
+        .toggle-track.on {
+            background: #3b82f6;
+        }
+
+        .toggle-thumb {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, .2);
+            transition: left .2s;
+        }
+
+        .toggle-track.on .toggle-thumb {
+            left: 25px;
+        }
+
+        /* ── Animations & Alerts ── */
+        @keyframes badge-pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: .9;
+            }
+        }
+
+        .badge-critical {
+            animation: badge-pulse 1.5s infinite;
+        }
+
+        @keyframes toast-in {
+            from {
+                transform: translateY(30px);
+                opacity: 0
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1
+            }
+        }
+
+        @keyframes toast-out {
+            from {
+                transform: translateY(0);
+                opacity: 1
+            }
+
+            to {
+                transform: translateY(30px);
+                opacity: 0
+            }
+        }
+
+        .toast {
+            animation: toast-in .3s ease-out forwards;
+        }
+
+        .toast.hide {
+            animation: toast-out .3s ease-in forwards;
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: #64748b;
+        }
+
+        .dark .section-label {
+            color: #94a3b8;
+        }
+
+        .modal-bg {
+            background: rgba(15, 23, 42, .6);
+            backdrop-filter: blur(4px);
+        }
+
+        /* ── Transitions ── */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        /* CORRECCIÓN DEFINITIVA DE ANCHO PARA ESTADOS */
+        select.status-select,
+        [id^="status-"],
+        .estado-container select {
+            min-width: 145px !important;
+            /* Ancho suficiente para 'EN PROCESO' con margen */
+            width: 145px !important;
+            /* Forzamos el ancho exacto */
+            padding-right: 30px !important;
+            white-space: nowrap !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            display: inline-block !important;
+        }
+
+        /* Ajuste específico para que el texto no choque con la flecha */
+        select {
+            padding-left: 10px !important;
+            background-position: right 10px center !important;
+        }
+    </style>
+</head>
+
+<body class="dark:bg-slate-900 transition-colors duration-300">
+
+    <!-- PANTALLA DE LOGIN (EL TELÓN DE ACERO) -->
+    <div id="login-screen"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-95 backdrop-blur-sm transition-opacity duration-500">
+        <div
+            class="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-2xl w-full max-w-sm border border-slate-200 dark:border-slate-700 transform transition-transform">
+            <div class="text-center mb-6">
+                <div
+                    class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900 mb-4 shadow-inner">
+                    <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                        </path>
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Acceso Restringido</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">Hospital Arco Iris -
+                    Imágenes</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label
+                        class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 uppercase">Usuario</label>
+                    <input type="text" id="login-user" placeholder="Ej: ADMIN"
+                        class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white uppercase focus:ring-2 focus:ring-blue-500 outline-none transition-shadow">
+                </div>
+                <div>
+                    <label
+                        class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 uppercase">Contraseña</label>
+                    <input type="password" id="login-pass" placeholder="••••••••"
+                        class="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                        onkeypress="if(event.key === 'Enter') verificarLogin()">
+                </div>
+                <div id="login-error" class="text-red-500 text-xs font-bold text-center hidden animate-bounce">Usuario o
+                    contraseña incorrectos.</div>
+
+                <button onclick="verificarLogin()"
+                    class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition-colors focus:ring-4 focus:ring-blue-500/50 mt-2">
+                    INGRESAR AL SISTEMA
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENEDOR PRINCIPAL (OCULTO POR DEFECTO) -->
+    <div id="main-app" class="hidden">
+
+        <!-- HEADER (Sticky & Shrinkable) -->
+        <header id="main-header"
+            class="bg-slate-900 text-white shadow-xl sticky top-0 z-50 transition-all duration-300">
+            <div class="px-6 py-4 transition-all duration-300 flex flex-col lg:flex-row items-center justify-between gap-4 max-w-screen-2xl mx-auto"
+                id="header-container">
+                <!-- Left Logo -->
+                <div class="flex items-center gap-4 w-full lg:w-1/3 justify-center lg:justify-start order-2 lg:order-1">
+                    <div class="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center shadow-lg flex-shrink-0 transition-all duration-300"
+                        id="header-logo">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <path
+                                d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Center Titles -->
+                <div class="text-center w-full lg:w-1/3 order-1 lg:order-2">
+                    <p id="header-subtitle" class="text-slate-400 mono hidden sm:block transition-all duration-300"
+                        style="font-size:11px;letter-spacing:.14em;">HOSPITAL ARCO IRIS - SERVICIO DE IMÁGENES</p>
+                    <h1 id="header-title" class="font-bold text-xl text-white mt-1 transition-all duration-300">Registro
+                        de
+                        Estudios</h1>
+                </div>
+
+                <!-- Right Controls (Reloj) -->
+                <div class="flex items-center w-full lg:w-1/3 justify-center lg:justify-end order-3">
+                    <div class="text-right leading-tight flex-shrink-0">
+                        <p id="clock" class="mono text-[16px] font-bold text-slate-200"></p>
+                        <p id="clock-date" class="mono text-slate-400 font-medium" style="font-size:10px;"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB BAR Y CONTROLES MINIMALISTAS -->
+            <div class="px-6 flex justify-between items-end border-t border-slate-800 pt-1 max-w-screen-2xl mx-auto">
+                <!-- Pestañas -->
+                <div class="flex gap-1">
+                    <button id="tab-form" onclick="switchTab('form')"
+                        class="px-5 py-2 text-sm font-medium rounded-t-lg bg-slate-800 text-white">Nuevo
+                        Registro</button>
+                    <button id="tab-dashboard" onclick="switchTab('dashboard')"
+                        class="px-5 py-2 text-sm font-medium rounded-t-lg text-slate-400 hover:text-white">
+                        Dashboard <span id="tab-count"
+                            class="bg-blue-600 text-white mono font-bold rounded-full px-1.5 py-0.5 text-xs ml-1">0</span>
+                    </button>
+                    <!-- NUEVA PESTAÑA DE SOLICITUDES -->
+                    <button id="tab-solicitudes" onclick="switchTab('solicitudes')"
+                        class="px-5 py-2 text-sm font-medium rounded-t-lg text-slate-400 hover:text-white">
+                        Solicitudes <span id="sol-count"
+                            class="bg-red-600 text-white mono font-bold rounded-full px-1.5 py-0.5 text-xs ml-1 animate-pulse">0</span>
+                    </button>
+                </div>
+
+                <!-- Contenedor Derecho (Píldora + Sincronizar) -->
+                <div class="flex items-end">
+                    <!-- Píldora Ultra-Fina -->
+                    <div
+                        class="flex items-center bg-slate-800/40 rounded-full border border-slate-700/50 p-0.5 shadow-sm mb-1.5">
+                        <button onclick="toggleDarkMode()"
+                            class="p-1 rounded-full hover:bg-slate-700 transition flex-shrink-0 text-slate-400 hover:text-white">
+                            <svg id="icon-sun" class="w-3.5 h-3.5 hidden text-amber-400" fill="none"
+                                stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="5" />
+                                <path
+                                    d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                            </svg>
+                            <svg id="icon-moon" class="w-3.5 h-3.5 text-blue-300" fill="none" stroke="currentColor"
+                                stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                            </svg>
+                        </button>
+                        <div class="w-px h-3 bg-slate-600/50 mx-1"></div>
+                        <!-- Indicador Online -->
+                        <div class="flex items-center gap-1.5 pr-2.5 pl-0.5">
+                            <span class="relative flex h-1.5 w-1.5">
+                                <span
+                                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                            </span>
+                            <span class="text-emerald-400 font-mono font-bold tracking-widest"
+                                style="font-size: 9px; margin-top: 1px;">ONLINE ☁️</span>
+                        </div>
+                    </div>
+
+                    <!-- Botón de Sincronizar -->
+                    <button onclick="syncFromCloud()" id="btn-sync"
+                        class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-full text-[11px] font-bold transition-colors shadow-sm ml-1 mb-1.5">
+                        <svg id="sync-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <path
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Sincronizar
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- FORM PANEL -->
+        <section id="form-panel" class="max-w-5xl mx-auto px-6 py-8 scale-content">
+            <div
+                class="bg-white dark:bg-darkpanel rounded-2xl shadow-sm border border-slate-200 dark:border-darkborder overflow-hidden">
+                <div class="px-8 py-5 bg-gradient-to-r from-slate-900 to-slate-800">
+                    <h2 class="text-white font-semibold">Registro Operativo de Turno</h2>
+                    <p class="text-slate-400 mt-0.5 text-xs">El formato de mayúsculas y abreviaturas se corregirá
+                        automáticamente.</p>
+                </div>
+
+                <form id="registroForm" onsubmit="handleSubmit(event)" class="p-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+                        <!-- Fila 1: Fecha, Turno, Informante y Estado -->
+                        <div class="flex flex-col gap-1.5">
+                            <label class="section-label">Fecha del Estudio *</label>
+                            <input type="date" id="f_fecha" class="field font-semibold text-blue-600" required />
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <label class="section-label">Turno *</label>
+                            <select id="f_turno" class="field" required>
+                                <option value="Mañana">Mañana</option>
+                                <option value="Tarde">Tarde</option>
+                                <option value="Noche">Noche</option>
+                                <option value="Mañana / Tarde">Mañana / Tarde</option>
+                                <option value="Tarde / Noche">Tarde / Noche</option>
+                                <option value="Mañana / Tarde / Noche">Mañana / Tarde / Noche</option>
+                            </select>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <label class="section-label">Méd. Informante *</label>
+                            <input type="text" id="f_medico" class="field font-semibold" list="medicos-list" required
+                                placeholder="Ej: Dra. ..." autocomplete="off" />
+                            <datalist id="medicos-list">
+                                <option value="Dra. Tania Arce">
+                                <option value="Dra. Vanessa Ferrufino">
+                                <option value="Dra. Melvi Flores">
+                                <option value="Dr. Fernando Saavedra">
+                                <option value="Dr. Alvaro Sánchez">
+                            </datalist>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <label class="section-label">Estado Inicial</label>
+                            <select id="f_estado" class="field font-semibold">
+                                <option value="Pendiente" selected>Pendiente</option>
+                                <option value="En Proceso">En Proceso</option>
+                                <option value="Informado">Informado</option>
+                                <option value="Ninguno">Ninguno</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- FILA 2: HC, Paciente y Procedencia -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                        <div class="flex flex-col gap-1.5">
+                            <label
+                                class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">N°
+                                HC *</label>
+                            <input type="text" id="f_hc"
+                                class="w-full text-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 uppercase focus:ring-2 focus:ring-blue-500 outline-none transition-shadow shadow-sm"
+                                autocomplete="off" required>
+                        </div>
+
+                        <div class="md:col-span-2 flex flex-col gap-1.5">
+                            <label
+                                class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Paciente
+                                (Apellidos y Nombres) *</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="f_apellidos" placeholder="APELLIDOS"
+                                    class="w-1/2 text-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 uppercase focus:ring-2 focus:ring-blue-500 outline-none transition-shadow shadow-sm"
+                                    autocomplete="off" required>
+                                <input type="text" id="f_nombres" placeholder="NOMBRES"
+                                    class="w-1/2 text-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 uppercase focus:ring-2 focus:ring-blue-500 outline-none transition-shadow shadow-sm"
+                                    autocomplete="off" required>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <label
+                                class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Procedencia
+                                *</label>
+                            <input type="text" id="f_procedencia" list="procedencia-list"
+                                class="w-full text-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 uppercase focus:ring-2 focus:ring-blue-500 outline-none transition-shadow shadow-sm"
+                                placeholder="Escriba procedencia..." autocomplete="off" required>
+
+                            <datalist id="procedencia-list">
+                                <option value="EMERGENCIAS">
+                                <option value="CONSULTA EXTERNA">
+                                <option value="CAJA BANCARIA ESTATAL DE SALUD">
+                                <option value="SEGUROS EXTERNOS">
+                                <option value="UTI (TERAPIA INTENSIVA)">
+                                <option value="UTIN (TERAPIA INTERMEDIA)">
+                                <option value="UTIP (TERAPIA PEDIATRICA)">
+                                <option value="NEONATOLOGIA">
+                                <option value="PISO / INTERNACION">
+                                <option value="INTERNACION PRIVADA">
+                                <option value="INTERNACION PEDIATRICA">
+                                <option value="EXTERNO">
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <!-- FILA 3: Modalidad, Méd. Solicitante y Especialidad -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                        <div class="md:col-span-2 flex flex-col gap-1.5">
+                            <label
+                                class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Modalidad
+                                y Estudio *</label>
+                            <div class="flex rounded-lg shadow-sm w-full">
+                                <select id="mod-select" onchange="setModalidad(this.value)"
+                                    class="py-2 px-3 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-l-lg text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 border-r-0 cursor-pointer transition-colors hover:bg-slate-200 dark:hover:bg-slate-600">
+                                    <option value="TC" selected>TC</option>
+                                    <option value="RX">RX</option>
+                                    <option value="INT">INT</option>
+                                </select>
+                                <input type="text" id="f_tipo" list="lista-estudios" placeholder="EJ: TC DE CRANEO..."
+                                    class="flex-1 w-full px-3 py-2 rounded-r-lg border border-slate-300 dark:border-slate-600 text-xs font-semibold text-slate-800 dark:text-slate-100 uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 transition-shadow"
+                                    autocomplete="off" required>
+                                <datalist id="lista-estudios"></datalist>
+                                <datalist id="pacientes-list"></datalist>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <label
+                                class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Méd.
+                                Solicitante</label>
+                            <input type="text" id="f_solicitante" list="solicitantes-list" placeholder="EJ: PEREZ"
+                                class="w-full text-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 uppercase focus:ring-2 focus:ring-blue-500 outline-none transition-shadow shadow-sm"
+                                autocomplete="off">
+                            <datalist id="solicitantes-list"></datalist>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <label
+                                class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Especialidad</label>
+                            <input type="text" id="f_especialidad" list="esp-list" placeholder="EJ: NEUROLOGÍA"
+                                class="w-full text-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 uppercase focus:ring-2 focus:ring-blue-500 outline-none transition-shadow shadow-sm"
+                                autocomplete="off">
+                            <datalist id="esp-list"></datalist>
+                        </div>
+                    </div>
+
+                    <!-- FILA 4: Contraste y Motivo de Estudio -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div class="flex flex-col gap-1.5 justify-center">
+                            <label
+                                class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">¿Uso
+                                de Contraste?</label>
+                            <div class="flex items-center gap-3 mt-1 h-full">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="f_contraste" class="sr-only peer">
+                                    <div
+                                        class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600">
+                                    </div>
+                                </label>
+                                <span id="contraste-text"
+                                    class="text-xs font-bold text-slate-500 dark:text-slate-400">No</span>
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-3 flex flex-col gap-1.5">
+                            <label
+                                class="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Motivo
+                                de Estudio / DX Presuntivo</label>
+                            <textarea id="f_motivo" rows="2"
+                                placeholder="ESCRIBA EL MOTIVO O USE ABREVIATURAS... (ENTER PARA GUARDAR)"
+                                class="w-full text-xs p-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 uppercase focus:ring-2 focus:ring-blue-500 outline-none transition-shadow shadow-sm resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-6">
+                        <button type="button" onclick="resetFormCustom()"
+                            class="px-5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Limpiar</button>
+                        <button type="submit" id="btn-submit"
+                            class="px-8 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
+                            Registrar a Base
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- DASHBOARD PANEL -->
+        <section id="dashboard-panel" class="hidden max-w-[100%] w-full px-4 py-6 space-y-4 scale-content">
+            <div
+                class="flex flex-col lg:flex-row justify-between items-center bg-white dark:bg-darkpanel p-3 rounded-xl border border-slate-200 dark:border-darkborder shadow-sm gap-4">
+
+                <!-- Filtros -->
+                <div class="flex flex-wrap items-center justify-center lg:justify-start gap-2 w-full lg:w-auto">
+                    <button onclick="setFilter('all')" id="f-all"
+                        class="filter-btn active px-3 py-1.5 rounded-lg font-semibold border transition-colors bg-slate-800 text-white border-slate-800"
+                        style="font-size:12px;">Todos</button>
+                    <button onclick="setFilter('pendiente')" id="f-pendiente"
+                        class="filter-btn px-3 py-1.5 rounded-lg font-semibold border transition-colors border-amber-300 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/30"
+                        style="font-size:12px;">Pendientes</button>
+                    <button onclick="setFilter('critico')" id="f-critico"
+                        class="filter-btn px-3 py-1.5 rounded-lg font-semibold border transition-colors border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                        style="font-size:12px;">⚠ Críticos</button>
+                    <button onclick="setFilter('informado')" id="f-informado"
+                        class="filter-btn px-3 py-1.5 rounded-lg font-semibold border transition-colors border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+                        style="font-size:12px;">Informados</button>
+
+                    <!-- Filtro de Fechas Inteligente -->
+                    <div class="relative" id="date-filter-container">
+                        <button onclick="toggleDateMenu()" id="btn-date-filter"
+                            class="px-3 py-1.5 rounded-md border border-blue-300 text-blue-600 font-semibold bg-blue-50 hover:bg-blue-100 flex items-center gap-1.5 transition-colors shadow-sm text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path
+                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                                </path>
+                            </svg>
+                            <span id="date-filter-text">Hoy</span>
+                            <svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+
+                        <!-- Menú Desplegable -->
+                        <div id="date-filter-menu"
+                            class="hidden absolute top-full left-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-xl z-50 w-48 py-1.5 text-sm font-medium">
+                            <button onclick="setDateFilter('hoy', 'Hoy')"
+                                class="w-full text-left px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">Hoy</button>
+                            <button onclick="setDateFilter('semana', 'Esta semana')"
+                                class="w-full text-left px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">Esta
+                                semana</button>
+                            <button onclick="setDateFilter('2semanas', 'Últimas 2 sem.')"
+                                class="w-full text-left px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">Últimas
+                                2 semanas</button>
+                            <button onclick="setDateFilter('mes', 'Este mes')"
+                                class="w-full text-left px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">Este
+                                mes</button>
+                            <button onclick="setDateFilter('año', 'Este año')"
+                                class="w-full text-left px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">Este
+                                año</button>
+                            <div class="border-t border-slate-200 dark:border-slate-700 my-1"></div>
+                            <button onclick="setDateFilter('todo', 'Todo el Historial')"
+                                class="w-full text-left px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">Todo</button>
+                            <div class="border-t border-slate-200 dark:border-slate-700 my-1"></div>
+                            <button onclick="openCustomDateModal()"
+                                class="w-full text-left px-4 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 font-bold">Personalizado...</button>
+                        </div>
+                    </div>
+
+                    <select id="filter-medico" onchange="renderTable()" class="field py-1.5 ml-0 lg:ml-2"
+                        style="font-size:12px; width:auto; padding-top:6px; padding-bottom:6px;">
+                        <option value="">Todos los médicos</option>
+                        <option>Dra. Tania Arce</option>
+                        <option>Dra. Vanessa Ferrufino</option>
+                        <option>Dra. Melvi Flores</option>
+                        <option>Dr. Fernando Saavedra</option>
+                        <option>Dr. Alvaro Sánchez</option>
+                    </select>
+                </div>
+
+                <!-- Buscador -->
+                <div class="w-full lg:flex-1 flex justify-center max-w-md mx-auto">
+                    <div class="relative w-full">
+                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none"
+                            stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="m21 21-4.35-4.35" />
+                        </svg>
+                        <input type="text" id="search" placeholder="Buscar HC, Nombre o Estudio..."
+                            oninput="renderTable()"
+                            class="field pl-9 pr-4 py-1.5 text-sm w-full dark:bg-slate-800 border-2 border-blue-100 dark:border-blue-900/30 focus:border-blue-500 shadow-inner" />
+                    </div>
+                </div>
+
+                <!-- Exportar -->
+                <div class="flex items-center justify-center lg:justify-end w-full lg:w-auto flex-shrink-0">
+                    <button onclick="exportToExcel()"
+                        class="px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold flex items-center gap-2 hover:bg-emerald-500 transition-colors shadow-sm">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <path d="M8 13h5"></path>
+                            <path d="M8 17h5"></path>
+                            <path d="M14 13l2 4"></path>
+                            <path d="M16 13l-2 4"></path>
+                        </svg>
+                        Exportar Excel
+                    </button>
+                </div>
+            </div>
+
+            <div
+                class="bg-white dark:bg-darkpanel rounded-xl border border-slate-200 dark:border-darkborder shadow-sm overflow-hidden">
+                <div class="table-wrapper" style="height: 65vh;">
+                    <table id="main-table">
+                        <thead>
+                            <tr>
+                                <th class="px-3 py-3 text-left text-xs font-bold tracking-wider">#</th>
+                                <th class="px-3 py-3 text-left text-xs font-bold tracking-wider">FECHA / TURNO</th>
+                                <th class="px-3 py-3 text-left text-xs font-bold tracking-wider">PACIENTE</th>
+                                <th class="px-3 py-3 text-left text-xs font-bold tracking-wider">HC</th>
+                                <th class="px-3 py-3 text-left text-xs font-bold tracking-wider">ESTUDIO</th>
+                                <th class="px-3 py-3 text-center text-xs font-bold tracking-wider">C+</th>
+                                <th class="px-3 py-3 text-left text-xs font-bold tracking-wider">PROCEDENCIA</th>
+                                <th class="px-3 py-3 text-left text-xs font-bold tracking-wider">MÉD. INFORMANTE</th>
+                                <th class="px-3 py-3 text-left text-xs font-bold tracking-wider">SOLICITANTE / ESP.</th>
+                                <th class="px-3 py-3 text-left text-xs font-bold tracking-wider">ESTADO</th>
+                                <th class="px-3 py-3 text-center text-xs font-bold tracking-wider">TIEMPO</th>
+                                <th class="px-3 py-3 text-center text-xs font-bold tracking-wider">INFORME</th>
+                                <th class="px-3 py-3 text-center text-xs font-bold tracking-wider">BORRAR</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-100 dark:divide-slate-800/50"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- PANEL DE SOLICITUDES -->
+        <section id="solicitudes-panel" class="hidden max-w-[100%] w-full px-4 py-6 space-y-6 scale-content">
+            <!-- BARRA DE GESTIÓN MONOLÍTICA -->
+            <div
+                class="bg-white dark:bg-darkpanel p-8 rounded-3xl border border-slate-200 dark:border-darkborder shadow-2xl relative">
+                <div class="absolute left-0 top-0 w-1.5 h-full bg-red-600"></div>
+
+                <div class="flex flex-col xl:flex-row gap-6">
+                    <!-- Título y Subtítulo -->
+                    <div class="w-full xl:w-1/4">
+                        <h2 class="text-xl font-bold text-slate-800 dark:text-white tracking-tight">Registro de
+                            Pendientes</h2>
+                        <p class="text-xs text-slate-500 font-medium">Gestión de entregas y prioridades.</p>
+                    </div>
+
+                    <!-- Campos de Entrada (Ahora más a la izquierda y agrupados) -->
+                    <div class="flex flex-wrap items-end gap-3 w-full xl:w-3/4">
+                        <div class="w-44 space-y-1.5">
+                            <label class="section-label">Fecha Solicitud</label>
+                            <input type="date" id="sol-fecha-input" class="field h-11 font-bold text-blue-600">
+                        </div>
+
+                        <div class="flex-1 min-w-[280px] space-y-1.5">
+                            <label class="section-label">Paciente / N° HC</label>
+                            <input type="text" id="sol-search-input" list="pacientes-list"
+                                class="field h-11 border-slate-300 focus:ring-4 focus:ring-red-500/10"
+                                placeholder="Buscar en la base...">
+                        </div>
+
+                        <div class="w-56 space-y-1.5">
+                            <label class="section-label">Quién Solicita</label>
+                            <select id="sol-origen-select" class="field h-11 font-bold bg-slate-50 dark:bg-slate-800">
+                                <option value="" disabled selected>Seleccione...</option>
+                                <option value="ADMINISTRACIÓN">ADMINISTRACIÓN</option>
+                                <option value="DIRECCIÓN MÉDICA">DIRECCIÓN MÉDICA</option>
+                                <option value="MÉDICO TRATANTE">MÉDICO TRATANTE</option>
+                                <option value="PACIENTE">PACIENTE</option>
+                                <option value="FAMILIAR">FAMILIAR</option>
+                                <option value="SEGURO EXTERNO">SEGURO EXTERNO</option>
+                            </select>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="flex gap-2">
+                            <button onclick="exportarPendientesPDF()"
+                                class="h-11 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl shadow-lg transition-all flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <span class="text-[10px] font-black uppercase">PDF</span>
+                            </button>
+                            <button onclick="registrarSolicitudPro()"
+                                class="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 group">
+                                <svg class="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                <span class="text-xs">AÑADIR PENDIENTE</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTENEDOR DE TABLAS POR MÉDICO -->
+            <div id="solicitudes-container" class="space-y-6"></div>
+        </section>
+
+        <!-- MODAL INFORME -->
+        <div id="modal-informe"
+            class="hidden fixed inset-0 z-50 flex items-center justify-center modal-bg scale-content">
+            <div class="bg-white dark:bg-darkpanel rounded-2xl shadow-2xl w-full mx-4 border dark:border-slate-700"
+                style="max-width:560px;">
+                <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);" class="px-6 py-5 rounded-t-2xl">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-blue-300 mono" style="font-size:10px;letter-spacing:.12em;">EDITAR / CERRAR
+                                INFORME</p>
+                            <h3 id="modal-nombre" class="text-white font-bold text-base mt-0.5">—</h3>
+                            <p id="modal-meta" class="text-slate-400 mt-0.5" style="font-size:11px;">—</p>
+                        </div>
+                        <button onclick="closeInformeModal()"
+                            class="text-slate-500 hover:text-white transition-colors mt-1">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div
+                        class="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-3">
+                        <p class="section-label mb-1">Motivo / Diagnóstico Presuntivo</p>
+                        <p id="modal-motivo-display" class="text-slate-600 dark:text-slate-300"
+                            style="font-size:13px;line-height:1.5;"></p>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="section-label">Estado del Estudio</label>
+                        <select id="modal-estado" class="field text-sm">
+                            <option value="Ninguno">Ninguno</option>
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="En Proceso">En Proceso</option>
+                            <option value="Informado">Informado</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="section-label">Diagnóstico Radiológico Principal</label>
+                        <textarea id="modal-diag-text" class="field" style="min-height: 120px; resize: vertical;"
+                            placeholder="Escribir el diagnóstico radiológico final aquí...&#10;&#10;Ej: Hemorragia subaracnoidea Fisher II."></textarea>
+                        <p style="font-size:11px;" class="text-slate-400">Al guardar con texto, se marcará
+                            automáticamente
+                            como "Informado".</p>
+                    </div>
+                </div>
+                <div class="px-6 pb-6 flex justify-end gap-3">
+                    <button onclick="closeInformeModal()"
+                        class="px-5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancelar</button>
+                    <button onclick="saveInforme()"
+                        class="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path d="M5 13l4 4L19 7" />
+                        </svg> Guardar Informe
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOAST CONTAINER -->
+        <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2"></div>
+
+        <script>
+            // =========================================================================
+            // SISTEMA DE SEGURIDAD Y LOGIN (ANTI-SIMIOS)
+            // =========================================================================
+
+            // Aquí defines quién entra y con qué clave
+            const credenciales = {
+                "RICKS": "AD-2026",    // Tu usuario principal
+                "ADMIN": "arcoiris2026",    // Administración
+                "HAI": "CDIHAI"       // Los internos (la cambias cuando quieras)
+            };
+
+            function verificarLogin() {
+                const userForm = document.getElementById('login-user').value.trim().toUpperCase();
+                const passForm = document.getElementById('login-pass').value.trim();
+                const errorMsg = document.getElementById('login-error');
+
+                // Validación normal de diccionario
+                let accesoConcedido = false;
+
+                if (credenciales[userForm] && credenciales[userForm] === passForm) {
+                    accesoConcedido = true;
+                }
+
+                // TRUCO DE AUTORIZACIÓN REMOTA: 
+                // Si te llaman, les dices que el usuario es "EMERGENCIA".
+                // La clave es el DÍA DE HOY + el MES DE HOY (Ej: hoy 3 de mayo -> Clave: "0305")
+                // Solo tú sabes esta fórmula. Cambia automáticamente a la medianoche.
+                const hoy = new Date();
+                const claveSecreta = String(hoy.getDate()).padStart(2, '0') + String(hoy.getMonth() + 1).padStart(2, '0');
+
+                if (userForm === "EMERGENCIA" && passForm === claveSecreta) {
+                    accesoConcedido = true;
+                }
+
+                // Ejecución del veredicto
+                if (accesoConcedido) {
+                    // Guardamos un pase VIP temporal en el navegador para que si recargan no pida clave
+                    sessionStorage.setItem('acceso_medico', 'concedido');
+                    desbloquearPantalla();
+                } else {
+                    errorMsg.classList.remove('hidden');
+                    setTimeout(() => errorMsg.classList.add('hidden'), 3000); // Oculta el error a los 3 seg
+                }
+            }
+
+            function desbloquearPantalla() {
+                const loginScreen = document.getElementById('login-screen');
+                if (loginScreen) {
+                    loginScreen.style.opacity = '0';
+                    setTimeout(() => {
+                        loginScreen.classList.add('hidden');
+                        const mainApp = document.getElementById('main-app');
+                        if (mainApp) {
+                            mainApp.classList.remove('hidden');
+                            mainApp.classList.add('animate-fade-in');
+                        }
+                    }, 500);
+                }
+            }
+
+            // Verificar si ya metieron la clave en esta sesión antes de mostrar el login
+            document.addEventListener('DOMContentLoaded', () => {
+                if (sessionStorage.getItem('acceso_medico') === 'concedido') {
+                    desbloquearPantalla();
+                }
+            });
+
+            // === SISTEMA DE FILTRO DE FECHAS ===
+            let currentDateFilter = 'hoy'; // Por defecto arranca en Hoy
+            let customDateStart = '';
+            let customDateEnd = '';
+
+            function toggleDateMenu() {
+                document.getElementById('date-filter-menu').classList.toggle('hidden');
+            }
+
+            // Cierra el menú si haces clic afuera
+            document.addEventListener('click', (e) => {
+                const menu = document.getElementById('date-filter-menu');
+                const btn = document.getElementById('btn-date-filter');
+                if (menu && !menu.contains(e.target) && !btn.contains(e.target)) {
+                    menu.classList.add('hidden');
+                }
+            });
+
+            function setDateFilter(filterType, labelText) {
+                currentDateFilter = filterType;
+                document.getElementById('date-filter-text').innerText = labelText;
+                document.getElementById('date-filter-menu').classList.add('hidden');
+
+                const btn = document.getElementById('btn-date-filter');
+                if (filterType === 'todo') {
+                    btn.classList.replace('bg-blue-50', 'bg-slate-100');
+                    btn.classList.replace('border-blue-300', 'border-slate-300');
+                    btn.classList.replace('text-blue-600', 'text-slate-600');
+                } else {
+                    btn.classList.replace('bg-slate-100', 'bg-blue-50');
+                    btn.classList.replace('border-slate-300', 'border-blue-300');
+                    btn.classList.replace('text-slate-600', 'text-blue-600');
+                }
+                renderTable();
+            }
+
+            function openCustomDateModal() {
+                document.getElementById('date-filter-menu').classList.add('hidden');
+                document.getElementById('custom-date-modal').classList.remove('hidden');
+            }
+
+            function closeCustomDateModal() {
+                document.getElementById('custom-date-modal').classList.add('hidden');
+            }
+
+            function applyCustomDate() {
+                const start = document.getElementById('custom-date-start').value;
+                const end = document.getElementById('custom-date-end').value;
+
+                if (!start || !end) {
+                    showToast("Debes seleccionar ambas fechas", "error");
+                    return;
+                }
+
+                customDateStart = start;
+                customDateEnd = end;
+
+                const lblStart = start.split('-')[2] + '/' + start.split('-')[1];
+                const lblEnd = end.split('-')[2] + '/' + end.split('-')[1];
+                setDateFilter('personalizado', `${lblStart} al ${lblEnd}`);
+                closeCustomDateModal();
+            }
+
+            // === EFECTO HEADER STICKY AL HACER SCROLL (SOLUCIÓN DEFINITIVA ANTI-REBOTE) ===
+            let isHeaderShrunk = false;
+
+            window.addEventListener('scroll', () => {
+                const headerContainer = document.getElementById('header-container');
+                const logo = document.getElementById('header-logo');
+                const subtitle = document.getElementById('header-subtitle');
+                const title = document.getElementById('header-title');
+
+                if (!headerContainer) return;
+
+                // HISTÉRESIS
+                if (window.scrollY > 80 && !isHeaderShrunk) {
+                    isHeaderShrunk = true;
+                    headerContainer.classList.replace('py-4', 'py-1');
+                    logo.classList.replace('w-10', 'w-7');
+                    logo.classList.replace('h-10', 'h-7');
+
+                    subtitle.classList.remove('sm:block');
+                    subtitle.classList.add('hidden');
+
+                    title.classList.replace('text-xl', 'text-base');
+                    title.classList.replace('mt-1', 'mt-0');
+                }
+                else if (window.scrollY < 15 && isHeaderShrunk) {
+                    isHeaderShrunk = false;
+                    headerContainer.classList.replace('py-1', 'py-4');
+                    logo.classList.replace('w-7', 'w-10');
+                    logo.classList.replace('h-7', 'h-10');
+
+                    subtitle.classList.remove('hidden');
+                    subtitle.classList.add('sm:block');
+
+                    title.classList.replace('text-base', 'text-xl');
+                    title.classList.replace('mt-0', 'mt-1');
+                }
+            });
+
+            // === LIMPIADOR DE FECHAS GOOGLE SHEETS ===
+            function formatearFechaLimpia(fechaStr) {
+                if (!fechaStr) return '—';
+                if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) return fechaStr.split('-').reverse().join('/');
+                try {
+                    const d = new Date(fechaStr);
+                    if (!isNaN(d)) return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+                } catch (e) { }
+                return fechaStr.substring(0, 10);
+            }
+
+            function repararFechaGoogle(fechaStr) {
+                if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) return fechaStr;
+                try {
+                    const d = new Date(fechaStr);
+                    if (!isNaN(d.getTime())) return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                } catch (e) { }
+                return fechaStr.substring(0, 10);
+            }
+
+            // 1. SARGENTO DE FORMATO
+            const ABREVIATURAS = {
+                "\\bTEC\\b": "TRAUMATISMO ENCÉFALO CRANEAL",
+                "\\bACV\\b": "ACCIDENTE CEREBROVASCULAR",
+                "\\bTEP\\b": "TROMBOEMBOLISMO PULMONAR",
+                "\\bERC\\b": "ENFERMEDAD RENAL CRÓNICA",
+                "\\bDAE\\b": "DOLOR ABDOMINAL EN ESTUDIO",
+                "\\bHDA\\b": "HEMORRAGIA DIGESTIVA ALTA",
+                "\\bICC\\b": "INSUFICIENCIA CARDIACA CONGESTIVA",
+                "\\bMOE\\b": "MASA OCUPANTE DE ESPACIO"
+            };
+
+            function formatField(input) { input.value = input.value.trim().toUpperCase(); }
+            function sanitizeDocName(input) {
+                let val = input.value.trim().toUpperCase();
+                val = val.replace(/^(DR\.|DRA\.|DR|DRA)\s+/i, '');
+                input.value = val;
+            }
+            function sanitizeMotivo(input) {
+                let text = input.value.trim().toUpperCase();
+                for (const [key, value] of Object.entries(ABREVIATURAS)) {
+                    text = text.replace(new RegExp(key, 'g'), value);
+                }
+                input.value = text;
+            }
+
+            // 2. FECHA Y HORA DE BOLIVIA
+            function getBoliviaDateStr() {
+                const d = new Date(new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" }));
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            }
+
+            function updateClock() {
+                const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" }));
+                const timeFmt = new Intl.DateTimeFormat('es-BO', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                const dateFmt = new Intl.DateTimeFormat('es-BO', { day: '2-digit', month: 'long', year: 'numeric' });
+
+                document.getElementById('clock').textContent = timeFmt.format(now);
+                document.getElementById('clock-date').textContent = dateFmt.format(now);
+            }
+            setInterval(updateClock, 1000); updateClock();
+
+            // 3. UI CONTROLS
+            let contrasteOn = false;
+
+            function resetFormCustom() {
+                document.getElementById('registroForm').reset();
+                document.getElementById('f_fecha').value = getBoliviaDateStr();
+
+                const check = document.getElementById('f_contraste');
+                const txt = document.getElementById('contraste-text');
+                if (check && txt) {
+                    check.checked = false;
+                    contrasteOn = false;
+                    txt.textContent = "No";
+                }
+
+                if (document.getElementById('mod-select')) {
+                    document.getElementById('mod-select').value = 'TC';
+                    setModalidad('TC');
+                }
+            }
+
+            function toggleDarkMode() {
+                const html = document.documentElement;
+                html.classList.toggle('dark');
+                document.getElementById('icon-sun').classList.toggle('hidden', !html.classList.contains('dark'));
+                document.getElementById('icon-moon').classList.toggle('hidden', html.classList.contains('dark'));
+            }
+
+            function showToast(msg, type = 'success') {
+                const colors = { success: '#059669', warning: '#d97706', error: '#dc2626' };
+                const c = document.getElementById('toastContainer');
+                const t = document.createElement('div');
+                t.className = 'toast px-5 py-3 rounded-xl text-white text-sm font-medium shadow-xl';
+                t.style.background = colors[type] || colors.success;
+                t.style.maxWidth = '320px';
+                t.textContent = msg;
+                c.appendChild(t);
+                setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 300); }, 3000);
+            }
+
+            // 4. LÓGICA DE DATOS Y TIEMPO
+            let records = JSON.parse(localStorage.getItem('tc_v7') || '[]');
+            let rowCounter = records.length > 0 ? Math.max(...records.map(r => r._n || 0)) : 0;
+            let activeFilter = 'all';
+            let collapsedGroups = {};
+            let collapsedSolGroups = {}; // Guarda el estado (abierto/cerrado) de cada médico
+            let editingId = null;
+
+            function toggleSolGroup(medico) {
+                collapsedSolGroups[medico] = !collapsedSolGroups[medico];
+                renderSolicitudes(); // Refrescamos específicamente las solicitudes
+            }
+
+            function switchTab(tab) {
+                document.getElementById('form-panel').classList.toggle('hidden', tab !== 'form');
+                document.getElementById('dashboard-panel').classList.toggle('hidden', tab !== 'dashboard');
+                document.getElementById('solicitudes-panel').classList.toggle('hidden', tab !== 'solicitudes');
+
+                const tabs = ['tab-form', 'tab-dashboard', 'tab-solicitudes'];
+                tabs.forEach(t => {
+                    const el = document.getElementById(t);
+                    if (t === 'tab-' + tab) {
+                        el.className = "px-5 py-2 text-sm font-medium rounded-t-lg bg-slate-800 text-white";
+                    } else {
+                        el.className = "px-5 py-2 text-sm font-medium rounded-t-lg text-slate-400 hover:text-white";
+                    }
+                });
+
+                if (tab === 'dashboard' || tab === 'solicitudes') renderTable();
+            }
+
+            async function registrarSolicitudPro() {
+                const inputBusqueda = document.getElementById('sol-search-input');
+                const selectOrigen = document.getElementById('sol-origen-select');
+                const inputFecha = document.getElementById('sol-fecha-input');
+
+                if (!inputBusqueda.value || !selectOrigen.value) {
+                    showToast("Complete ambos campos para priorizar", "error");
+                    return;
+                }
+
+                // 1. EXTRAEMOS LA BÚSQUEDA Y LA LIMPIAMOS (Sea que use la lista o escriba manual)
+                const terminoBusqueda = inputBusqueda.value.split(' | ')[0].trim().toUpperCase();
+
+                // 2. BUSCADOR BLINDADO: Convierte el HC de la base a texto para que no haya falsos negativos
+                const recordIndex = records.findIndex(r => {
+                    const hcLimpio = String(r.hc || '').trim().toUpperCase();
+                    return hcLimpio === terminoBusqueda;
+                });
+
+                if (recordIndex !== -1) {
+                    const origen = selectOrigen.value;
+
+                    // ACTUALIZACIÓN CRÍTICA: Cambiamos el estado en el array global
+                    records[recordIndex].solicitado = 'SÍ';
+                    records[recordIndex].origen_solicitud = origen;
+                    records[recordIndex].fecha_solicitud = inputFecha.value;
+
+                    // Guardamos en el navegador para que no se pierda al refrescar
+                    localStorage.setItem('tc_v7', JSON.stringify(records));
+
+                    try {
+                        await fetch(SCRIPT_URL, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            body: JSON.stringify({
+                                auth_key: API_SECRET_KEY,
+                                action: 'update',
+                                id: records[recordIndex]._id,
+                                column: 'solicitado',
+                                value: 'SÍ',
+                                hoja: records[recordIndex].hoja
+                            })
+                        });
+
+                        showToast("Prioridad asignada correctamente", "success");
+                        inputBusqueda.value = '';
+                        selectOrigen.selectedIndex = 0;
+                        renderTable(); // Refrescamos la vista de inmediato
+
+                        // Forzamos la actualización de las pestañas
+                        if (typeof renderSolicitudes === 'function') renderSolicitudes();
+
+                    } catch (e) {
+                        showToast("Guardado localmente. Error de sincronización.", "warning");
+                    }
+                } else {
+                    showToast("Paciente no encontrado. Verifique el HC.", "error");
+                }
+            }
+
+            // === URL DE TU BASE DE DATOS EN GOOGLE SHEETS ===
+            const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyTdwbbE0t8HftCXCa44hj_Y5mFTUf1AuYvkEq6PuQQ-Kh3wvrYSSLDJOjRAavPkVyqsw/exec";
+            const API_SECRET_KEY = "ArcoIris_Secure_2026_X";
+
+            async function handleSubmit(e) {
+                e.preventDefault();
+
+                const btn = document.getElementById('btn-submit');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = `<svg class="animate-spin h-4 w-4 mr-2 inline" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Guardando...`;
+                btn.disabled = true;
+
+                rowCounter++;
+                const tsBolivia = new Date(new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" })).toISOString();
+
+                const apellidos = document.getElementById('f_apellidos').value.trim();
+                const nombres = document.getElementById('f_nombres').value.trim();
+                const nombreFinal = apellidos + " " + nombres;
+
+                // Procesamiento de Tipo de Estudio
+                let tipoRaw = document.getElementById('f_tipo').value.trim().toUpperCase();
+                let tipoLimpio = tipoRaw.replace(/^(TC SIMPLE|TC CON CONTRASTE|TC|RX|BIOPSIA:)\s+(DE\s+)?/i, '').trim();
+
+                // Determinar prefijo según modalidad seleccionada en el select
+                let prefix = "";
+                const activeMod = document.getElementById('mod-select')?.value || 'TC';
+
+                if (activeMod === 'TC') {
+                    prefix = (contrasteOn ? "TC CON CONTRASTE " : "TC SIMPLE ");
+                } else if (activeMod === 'RX') {
+                    prefix = "RX ";
+                } else if (activeMod === 'INT') {
+                    prefix = "";
+                }
+
+                let tipoFinal = prefix + tipoLimpio;
+
+                // Protocolo Anti-Simio
+                let medicoSeleccionado = document.getElementById('f_medico').value;
+                if (tipoLimpio.includes("CORONARIAS") || tipoLimpio.includes("SCORE DE CALCIO")) {
+                    medicoSeleccionado = "Dra. Melvi Flores";
+                    document.getElementById('f_medico').value = medicoSeleccionado;
+                }
+
+                let destino = "TOMOGRAFIA";
+                if (activeMod === 'RX') destino = "RADIOGRAFIA";
+                if (activeMod === 'INT') destino = "INTERVENCIONISMO";
+
+                const rec = {
+                    auth_key: API_SECRET_KEY, // Llave de seguridad
+                    _id: Date.now().toString(),
+                    _n: rowCounter,
+                    _ts: tsBolivia,
+                    hoja: destino,
+                    fecha: document.getElementById('f_fecha').value,
+                    turno: document.getElementById('f_turno').value,
+                    medico: medicoSeleccionado,
+                    estado: document.getElementById('f_estado').value,
+                    hc: document.getElementById('f_hc').value,
+                    nombre: nombreFinal,
+                    procedencia: document.getElementById('f_procedencia').value,
+                    tipo: tipoFinal,
+                    contraste: contrasteOn ? 'Sí' : 'No',
+                    solicitante: document.getElementById('f_solicitante').value,
+                    especialidad: document.getElementById('f_especialidad').value,
+                    motivo: document.getElementById('f_motivo').value,
+                    diagnostico: '',
+                    solicitado: 'NO',
+                    origen_solicitud: ''
+                };
+
+                try {
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(rec)
+                    });
+
+                    records.unshift(rec);
+                    localStorage.setItem('tc_v7', JSON.stringify(records));
+                    updateDatalists();
+
+                    resetFormCustom();
+                    showToast("Estudio guardado en la Nube ☁️", "success");
+
+                    document.getElementById('f_hc').focus();
+                    document.getElementById('tab-count').innerText = records.length;
+
+                    if (!document.getElementById('dashboard-panel').classList.contains('hidden')) {
+                        renderTable();
+                    }
+
+                } catch (error) {
+                    console.error("Error al subir a la nube:", error);
+                    showToast("Error de red. Guardado solo en local.", "error");
+                    records.unshift(rec);
+                    localStorage.setItem('tc_v7', JSON.stringify(records));
+                } finally {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            }
+
+            // === DESCARGAR DATOS DE LA NUBE (VERSIÓN ANTI-CORS DEFINITIVA) ===
+            async function syncFromCloud() {
+                const btn = document.getElementById('btn-sync');
+                const icon = document.getElementById('sync-icon');
+
+                btn.disabled = true;
+                icon.classList.add('animate-spin');
+                showToast("Conectando con la base central...", "warning");
+
+                try {
+                    // 1. AÑADIMOS UN PARÁMETRO BASURA A LA URL PARA BURLAR LA CACHÉ
+                    const urlNoCache = SCRIPT_URL + "?t=" + new Date().getTime();
+
+                    // 2. FORZAMOS EL MODO CORS Y ESPERAMOS LA RESPUESTA
+                    const response = await fetch(urlNoCache, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    // 3. EXTRAEMOS LOS DATOS
+                    const cloudData = await response.json();
+
+                    if (cloudData && Array.isArray(cloudData)) {
+                        let counter = cloudData.length;
+                        cloudData.forEach(r => {
+                            r._n = counter--;
+                            r.fecha = repararFechaGoogle(r.fecha); // Repara la fecha corrupta
+                        });
+
+                        records = cloudData;
+                        rowCounter = cloudData.length;
+
+                        localStorage.setItem('tc_v7', JSON.stringify(records));
+                        updateDatalists();
+                        renderTable();
+                        if (typeof renderSolicitudes === 'function') renderSolicitudes();
+
+                        showToast("¡Base de datos Sincronizada! 🚀", "success");
+                    } else {
+                        showToast("La base de datos está vacía o hubo un error de lectura.", "error");
+                    }
+                } catch (error) {
+                    console.error("Error al sincronizar:", error);
+                    // MENSAJE DE DIAGNÓSTICO MÁS CLARO
+                    showToast("Error. Verifica que el script sea 'Cualquier Persona'.", "error");
+                } finally {
+                    btn.disabled = false;
+                    icon.classList.remove('animate-spin');
+                }
+            }
+
+            // 4.5 EVENTO ENTER EN TEXTAREA
+            document.getElementById('f_motivo').addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    document.getElementById('btn-submit').click();
+                }
+            });
+
+            function setFilter(f) {
+                activeFilter = f;
+                document.querySelectorAll('.filter-btn').forEach(b => {
+                    b.classList.remove('bg-slate-800', 'text-white', 'border-slate-800');
+                    b.style.color = '';
+                });
+                const activeBtn = document.getElementById('f-' + f);
+                if (activeBtn) activeBtn.classList.add('bg-slate-800', 'text-white', 'border-slate-800');
+                renderTable();
+            }
+
+            function toggleGroup(g) {
+                collapsedGroups[g] = !collapsedGroups[g];
+                renderTable();
+            }
+
+            // === MOTOR DE RETROALIMENTACIÓN ===
+            // =========================================================================
+            // MOTOR DEL TRI-TOGGLE (TC / RX / INT) Y AUTOCOMPLETADO
+            // =========================================================================
+
+            const estudiosTC = ["TC MIEMBRO INFERIOR D", "TC MIEMBRO INFERIOR I", "TC MIEMBROS INFERIORES", "TC RODILLA D", "TC RODILLA I", "TC RODILLAS", "TC PIE D", "TC PIE I", "TC AMBOS PIES", "TC TOBILLO D", "TC TOBILLO I", "TC AMBOS TOBILLOS", "TC MIEMBRO SUPERIOR D", "TC MIEMBRO SUPERIOR I", "TC MIEMBROS SUPERIORES", "TC MANO D", "TC MANO I", "TC AMBAS MANOS", "TC ANTEBRAZO D", "TC ANTEBRAZO I", "TC AMBOS ANTEBRAZOS", "TC HOMBRO D", "TC HOMBRO I", "TC CINTURA ESCAPULAR", "TC CODO D", "TC CODO I", "TC AMBOS CODOS", "TC ENCEFALO/CRANEO", "TC CABEZA + CUELLO", "TC CUELLO", "TC SENOS PARANASALES", "TC MACIZO FACIAL / ORBITAS", "TC OIDOS / PENASCOS", "TC BASE DE CRANEO", "TC COLUMNA CERVICAL", "TC COLUMNA DORSAL", "TC COLUMNA LUMBOSACRA", "TC COLUMNA TORACOLUMBAR", "TC COLUMNA TOTAL", "TC TORAX", "TC TORAX + ABDOMEN + PELVIS (TAP)", "TC TORAX + ABDOMEN (TA)", "TC CORONARIAS / SCORE DE CALCIO", "TC ABDOMEN", "TC ABDOMEN + PELVIS", "TC PELVIS", "TC PELVIS OSEA", "TC PIELOTOMOGRAFIA", "TC UROTOMOGRAFIA", "TC ARTERIAS PULMONARES", "TC TRONCOS SUPRAAORTICOS", "TC VASOS INTRACRANEALES", "TC AORTA TORACICA", "TC AORTA ABDOMINAL", "TC AORTA TORACOABDOMINAL", "TC ARTERIAS RENALES", "TC ARTERIAS MESENTERICAS", "TC ARTERIAS DE MIEMBROS INFERIORES"];
+            const estudiosRX = ["RX CRANEO AP", "RX CRANEO LATERAL", "RX CRANEO SUBMENTOVERTICE", "RX SILLA TURCA LATERAL", "RX SILLA TURCA AP", "RX MACIZO FACIAL LATERAL", "RX MACIZO FACIAL PARIETOCANTIAL", "RX MACIZO FACIAL PA", "RX HPN LATERAL", "RX PROYECCION DE WATERS", "RX PROYECCION DE CALDWELL", "RX ARCOS SIGOMATICOS SUBMENTONVERTEX", "RX ARCOS CIGOMATICOS AP", "RX ORBITAS OBLICUA", "RX MANDIBULA AXIOLATERAL", "RX MANDIBULA PA", "RX MANDIBULA AP", "RX ARTICULACION TEMPOROMANDIBULAR", "RX ESOFAGOGRAMA", "RX ESOFAGOGASTRODUODENAL", "RX TRANSITO INTESTINAL", "RX COLON POR ENEMA", "RX UROGRAFIA INTRAVENOSA", "RX CISTOGRAFIA", "RX CISTOURETROGRAFIA MICCIONAL MASCULINA", "RX CISTOURETROGRAFIA MICCIONAL FEMENINA", "RX URETROGRAFIA MASCULINA", "RX URETROGRAFIA FEMENINA", "RX FISTULOGRAFIA", "RX COLANGIOGRAFIA", "RX TORAX AP", "RX TORAX PA", "RX TORAX LATERAL", "RX TORAX OBLICUO", "RX ESTERNON OAD", "RX ESTERNON LATERAL", "RX ESTERNON OBLICUA", "RX COSTILLAS AP", "RX COSTILLAS PA", "RX ABDOMEN AP", "RX ABDOMEN PA", "RX ABDOMEN LATERAL", "RX DEDOS PA", "RX DEDOS PA/OBLICUA", "RX DEDOS LATERAL", "RX MANO PA", "RX MANO PA/OBLICUA", "RX MANO LATERAL", "RX MANO AP/OBLICUA", "RX MUNECA PA", "RX MUNECA PA/OBLICUA", "RX MUNECA LATERAL", "RX MUNECA CON DESVIACION RADIAL", "RX MUNECA CANAL CARPIANO", "RX ANTEBRAZO AP", "RX ANTEBRAZO LATERAL", "RX CODO AP", "RX CODO AP/OBLICUA", "RX CODO LATERAL", "RX CODO FLECION", "RX HUMERO AP", "RX HUMERO LATERAL", "RX HUMERO TRANSTORACICO LATERAL", "RX HOMBRO AP", "RX HOMBRO AXIAL INFEROSUPERIOR", "RX HOMBRO PA", "RX HOMBRO OBLICUO", "RX CLAVICULA AP", "RX CLAVICULA AXIAL", "RX ARTICULACION ACROMIOCLAVICULAR AP", "RX ESCAPULA AP", "RX ESCAPULA LATERAL", "RX EDAD OSEA (MANO)", "RX PIE AP", "RX PIE OBLICUO", "RX PIE LATERAL", "RX PIE AP/LATERAL", "RX CALCANEO PLANTODORSAL", "RX CALCANEO LATERAL", "RX TOBILLO AP", "RX TOBILLO AP DE MORTAJA", "RX TOBILLO AP/OBLICUO", "RX TOBILLO LATERAL", "RX PIERNA, TIBIA Y PERONE AP", "RX PIERNA, TIBIA Y PERONE LATERAL", "RX RODILLA AP", "RX RODILLA OBLICUO", "RX RODILLA LATERAL", "RX RODILLA AXIAL", "RX RODILLA AP/AXIAL", "RX FEMUR AP", "RX FEMUR LATERAL", "RX FEMUR LATEROMEDIAL", "RX PELVIS AP", "RX PELVIS AXIAL", "RX PELVIS OBLICUA", "RX CADERA AP", "RX CADERA AXIOLATERAL", "RX CADERA UNILATERAL", "RX CADERA PEDIATRICA", "RX RODILLA LATERAL/AXIAL", "RX RODILLA AP/LATERAL", "RX RODILLA AP/LATERAL/AXIAL", "RX ESCANOGRAMA AP", "RX COLUMNA CERVICAL AP", "RX COLUMNA CERVICAL OBLICUAS", "RX COLUMNA CERVICAL LATERAL", "RX COLUMNA CERVICOTORACICA", "RX COLUMNA CERVICAL HIPEREXTENSION", "RX COLUMNA CERVICAL HIPERFLEXION", "RX COLUMNA CERVICAL HIPEREXTENSION/HIPERFLEXION", "RX COLUMNA TORACICA AP", "RX COLUMNA TORACICA LATERAL", "RX COLUMNA TORACICA OBLICUA", "RX COLUMNA LUMBAR AP", "RX COLUMNA LUMBAR LATERAL", "RX COLUMNA LUMBAR OBLICUA", "RX COLUMNA TORACOLUMBAR", "RX SACRO Y COXIS AP/AXIAL", "RX SACRO Y COXIS LATERAL", "RX SACRO Y COXIS AP", "RX ESPINOGRAMA AP/LATERAL"];
+            const estudiosINT = ["BIOPSIA: LESION PULMONAR", "BIOPSIA: NODULO PULMONAR", "BIOPSIA: MASA MEDIASTINICA", "BIOPSIA: LESION PLEURAL", "BIOPSIA: LESION HEPATICA", "BIOPSIA: LESION RENAL", "BIOPSIA: LESION SUPRARRENAL", "BIOPSIA: MASA RETROPERITONEAL", "BIOPSIA: ADENOPATIA PROFUNDA", "BIOPSIA: LESION PANCREATICA", "BIOPSIA: LESION PERITONEAL/MESENTERICA", "BIOPSIA: MASA DE PARTES BLANDAS", "BIOPSIA: LESION OSEA", "BIOPSIA: LESION VERTEBRAL", "BIOPSIA: LESION PELVICA OSEA", "BIOPSIA: LESION SACRA", "BIOPSIA: LESION OSEA INTRAMEDULAR", "BIOPSIA: MEDULA OSEA", "BIOPSIA: INTRAMEDULAR (ESPINAL)", "DRENAJE: COLECCION ABDOMINAL", "DRENAJE: COLECCION PELVICA", "DRENAJE: COLECCION RETROPERITONEAL", "DRENAJE: ABSCESO ABDOMINAL", "DRENAJE: ABSCESO PELVICO", "DRENAJE: COLECCION SUBFRENICA", "DRENAJE: COLECCION HEPATICA", "DRENAJE: COLECCION ESPLENICA", "DRENAJE: COLECCION PANCREATICA/PERIPANCREATICA", "DRENAJE: COLECCION DE PARTES BLANDAS", "DRENAJE: COLECCION MUSCULAR", "DRENAJE: COLECCION PLEURAL", "DRENAJE: ABSCESO HEPATICO", "DRENAJE: PSEUDOQUISTE PANCREATICO", "DRENAJE: EMPIEMA/COLECCION PLEURAL", "DRENAJE: LIQUIDO PLEURAL"];
+
+            function setModalidad(mod) {
+                const inputTipo = document.getElementById('f_tipo');
+                const datalist = document.getElementById('lista-estudios');
+
+                let listaActiva, placeholderTxt;
+
+                if (mod === 'TC') {
+                    listaActiva = estudiosTC;
+                    placeholderTxt = "EJ: TC DE CRANEO...";
+                } else if (mod === 'RX') {
+                    listaActiva = estudiosRX;
+                    placeholderTxt = "EJ: RX TORAX PA...";
+                } else if (mod === 'INT') {
+                    listaActiva = estudiosINT;
+                    placeholderTxt = "EJ: BIOPSIA: LESION HEPATICA...";
+                }
+
+                // Vaciar y rellenar el datalist con la lista elegida
+                datalist.innerHTML = '';
+                listaActiva.forEach(estudio => {
+                    const option = document.createElement('option');
+                    option.value = estudio;
+                    datalist.appendChild(option);
+                });
+
+                // Limpiar el cuadro de texto para no arrastrar errores y poner el nuevo ejemplo
+                inputTipo.value = '';
+                inputTipo.placeholder = placeholderTxt;
+                inputTipo.focus(); // Manda el cursor directo para empezar a escribir
+            }
+
+            // Arrancar en Tomografía (TC) por defecto al cargar la página
+            document.addEventListener('DOMContentLoaded', () => {
+                // Sincronizar el checkbox de contraste con el texto
+                const checkContraste = document.getElementById('f_contraste');
+                const textContraste = document.getElementById('contraste-text');
+                if (checkContraste && textContraste) {
+                    checkContraste.addEventListener('change', () => {
+                        contrasteOn = checkContraste.checked;
+                        textContraste.textContent = contrasteOn ? "Sí" : "No";
+                    });
+                }
+
+                setTimeout(() => {
+                    if (document.getElementById('mod-select')) {
+                        document.getElementById('mod-select').value = 'TC';
+                        setModalidad('TC');
+                    }
+                }, 500);
+            });
+            // =========================================================================
+
+            function updateDatalists() {
+                // Listas base para médicos y especialidades
+                const docs = new Set(["RUDDY SOTO", "JAIME CARRASCO", "LUIS BEDREGAL", "MARIO TERAN"]);
+                const esps = new Set(["NEFROLOGÍA", "NEUMOLOGÍA", "CIRUGÍA GENERAL", "TRAUMATOLOGÍA"]);
+                const pacientes = new Set();
+
+                // El sistema solo aprende de estos campos
+                records.forEach(r => {
+                    if (r.solicitante) docs.add(r.solicitante.toUpperCase());
+                    if (r.especialidad) esps.add(r.especialidad.toUpperCase());
+                    if (r.nombre && r.hc) pacientes.add(`${r.hc} | ${r.nombre}`);
+                });
+
+                // Inyectar sugerencias inteligentes
+                const docList = document.getElementById('solicitantes-list');
+                if (docList) docList.innerHTML = [...docs].sort().map(d => `<option value="${d}">`).join('');
+
+                const espList = document.getElementById('esp-list');
+                if (espList) espList.innerHTML = [...esps].sort().map(e => `<option value="${e}">`).join('');
+
+                // El buscador de pacientes (esto es lo que te salva el pellejo con los reincidentes)
+                const pacList = document.getElementById('pacientes-list');
+                if (pacList) pacList.innerHTML = [...pacientes].sort().map(p => `<option value="${p}">`).join('');
+            }
+
+            // === RENDERIZADO CON AGRUPACIÓN Y PESTAÑAS (VERSIÓN DEFINITIVA: FECHAS BLINDADAS + ICONOS MINIMALISTAS) ===
+            function renderTable() {
+                try {
+                    const tbody = document.getElementById('tableBody') || document.getElementById('table-body');
+                    if (!tbody) return;
+                    tbody.innerHTML = '';
+
+                    let arr = records.slice();
+
+                    // --- TRITURADOR DE FECHAS (Blindaje total contra fechas antiguas o corruptas) ---
+                    const parseSafeDate = (dStr) => {
+                        if (!dStr) return new Date();
+                        let s = String(dStr).trim();
+
+                        if (s.includes('T')) s = s.split('T')[0];
+                        if (s.includes(' ')) s = s.split(' ')[0];
+
+                        let y = new Date().getFullYear(), m = new Date().getMonth(), d = new Date().getDate();
+
+                        if (s.includes('/')) {
+                            let p = s.split('/'); // Asume DD/MM/YYYY
+                            if (p.length === 3) {
+                                d = parseInt(p[0], 10);
+                                m = parseInt(p[1], 10) - 1; // JS cuenta los meses desde 0
+                                y = parseInt(p[2], 10);
+                            }
+                        } else if (s.includes('-')) {
+                            let p = s.split('-'); // Asume YYYY-MM-DD
+                            if (p.length === 3) {
+                                y = parseInt(p[0], 10);
+                                m = parseInt(p[1], 10) - 1;
+                                d = parseInt(p[2], 10);
+                            }
+                        }
+
+                        let finalDate = new Date(y, m, d);
+                        // Si por algún motivo matemático falla, devuelve hoy
+                        if (isNaN(finalDate.getTime())) return new Date();
+                        return finalDate;
+                    };
+
+                    // 1. Filtro de Búsqueda
+                    const searchBox = document.querySelector('input[placeholder*="Buscar"]');
+                    if (searchBox && searchBox.value) {
+                        const term = searchBox.value.toLowerCase();
+                        arr = arr.filter(r =>
+                            (r.hc && r.hc.toLowerCase().includes(term)) ||
+                            (r.nombre && r.nombre.toLowerCase().includes(term)) ||
+                            (r.tipo && r.tipo.toLowerCase().includes(term))
+                        );
+                    }
+
+                    // 2. Filtro de Médico
+                    const filterDocEl = document.getElementById('filter-medico') || document.querySelector('select:has(option[value="all"])');
+                    if (filterDocEl && filterDocEl.value !== 'all' && filterDocEl.value !== 'Todos los médicos' && filterDocEl.value !== '') {
+                        arr = arr.filter(r => r.medico === filterDocEl.value);
+                    }
+
+                    // 3. Filtro de Fechas (INTELIGENTE)
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    arr = arr.filter(r => {
+                        let st = (r.estado || '').trim();
+                        if (st === 'Pendiente' || st === 'En Proceso' || st === '') return true;
+                        if (!r.fecha) return true;
+
+                        let recordDate = parseSafeDate(r.fecha);
+
+                        if (currentDateFilter === 'hoy') return recordDate.getTime() === today.getTime();
+                        if (currentDateFilter === 'semana') {
+                            const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+                            return recordDate >= weekAgo && recordDate <= today;
+                        }
+                        if (currentDateFilter === '2semanas') {
+                            const twoWeeksAgo = new Date(today); twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+                            return recordDate >= twoWeeksAgo && recordDate <= today;
+                        }
+                        if (currentDateFilter === 'mes') return recordDate.getMonth() === today.getMonth() && recordDate.getFullYear() === today.getFullYear();
+                        if (currentDateFilter === 'año') return recordDate.getFullYear() === today.getFullYear();
+                        if (currentDateFilter === 'personalizado') {
+                            const start = new Date(customDateStart + "T00:00:00");
+                            const end = new Date(customDateEnd + "T23:59:59");
+                            return recordDate >= start && recordDate <= end;
+                        }
+                        return true;
+                    });
+
+                    // 4. Clasificar en Grupos y Calcular Tiempos Reales
+                    const groupCríticos = [];
+                    const groupPendientes = [];
+                    const groupProceso = [];
+                    const groupInformados = [];
+                    const groupNinguno = [];
+
+                    const now = new Date();
+
+                    arr.forEach(r => {
+                        let baseTime = parseSafeDate(r.fecha);
+
+                        let turno = (r.turno || '').toLowerCase();
+                        if (turno.includes('mañana')) baseTime.setHours(8, 0, 0, 0);
+                        else if (turno.includes('tarde')) baseTime.setHours(14, 0, 0, 0);
+                        else if (turno.includes('noche')) baseTime.setHours(20, 0, 0, 0);
+                        else baseTime.setHours(12, 0, 0, 0);
+
+                        let diffHrs = (now.getTime() - baseTime.getTime()) / (1000 * 60 * 60);
+                        r._diffHrs = diffHrs > 0 ? diffHrs : 0;
+
+                        let isCritico = false;
+                        let estadoLimpio = (r.estado || '').trim();
+
+                        if (estadoLimpio === 'Pendiente' || estadoLimpio === '') {
+                            if (r._diffHrs >= 24) isCritico = true;
+                        }
+
+                        if (estadoLimpio === 'Informado') groupInformados.push(r);
+                        else if (estadoLimpio === 'En Proceso') groupProceso.push(r);
+                        else if (estadoLimpio === 'Ninguno') groupNinguno.push(r);
+                        else {
+                            if (isCritico) groupCríticos.push(r);
+                            else groupPendientes.push(r);
+                        }
+                    });
+
+                    // 5. Conexión con Botones Superiores
+                    let activeTab = 'Todos';
+                    if (typeof activeFilter !== 'undefined') {
+                        if (activeFilter === 'all') activeTab = 'Todos';
+                        else if (activeFilter === 'pendiente') activeTab = 'Pendientes';
+                        else if (activeFilter === 'critico') activeTab = 'Críticos';
+                        else if (activeFilter === 'informado') activeTab = 'Informados';
+                    }
+
+                    // === MOTOR GRÁFICO MINIMALISTA Y SELECTOR UNIFICADO ===
+                    function drawGroup(title, list, iconSvg, isCriticalGroup) {
+                        if (list.length === 0) return;
+
+                        const isCollapsed = collapsedGroups[title] || false;
+                        const rotateClass = isCollapsed ? '-rotate-90' : 'rotate-0';
+
+                        tbody.innerHTML += `
+                    <tr class="cursor-pointer bg-slate-100/80 hover:bg-slate-200/80 dark:bg-slate-800/60 dark:hover:bg-slate-800/80 transition-colors border-y border-slate-300 dark:border-slate-700" onclick="toggleGroup('${title}')">
+                        <td colspan="13" class="py-2.5 px-4 select-none">
+                            <div class="flex items-center gap-2.5">
+                                <svg class="w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${rotateClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                ${iconSvg}
+                                <span class="text-[11px] font-bold text-slate-800 dark:text-slate-200 tracking-widest uppercase">${title}</span>
+                                <span class="text-[10px] font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full shadow-sm ml-1">${list.length}</span>
+                            </div>
+                        </td>
+                    </tr>`;
+
+                        if (isCollapsed) return;
+
+                        list.forEach(r => {
+                            let estadoLimpio = (r.estado || '').trim();
+                            let isThisRowCritico = isCriticalGroup || (r._diffHrs >= 24 && (estadoLimpio === 'Pendiente' || estadoLimpio === ''));
+
+                            let rowBg = 'bg-white hover:bg-slate-50 dark:bg-darkpanel dark:hover:bg-slate-800/60 text-slate-800 dark:text-slate-200';
+
+                            if (isThisRowCritico) {
+                                rowBg = 'bg-red-100/80 hover:bg-red-200/80 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-slate-800 dark:text-slate-200';
+                            } else if (estadoLimpio === 'En Proceso') {
+                                rowBg = 'bg-blue-100/70 hover:bg-blue-200/70 dark:bg-blue-900/30 dark:hover:bg-blue-900/40 text-slate-800 dark:text-slate-200';
+                            } else if (estadoLimpio === 'Informado') {
+                                rowBg = 'bg-emerald-100/60 hover:bg-emerald-200/60 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30 text-slate-800 dark:text-slate-200';
+                            } else if (estadoLimpio === 'Ninguno') {
+                                rowBg = 'bg-slate-200/70 hover:bg-slate-300/70 dark:bg-slate-800/50 dark:hover:bg-slate-700/60 text-slate-800 dark:text-slate-200';
+                            }
+
+                            // --- SELECTOR UNIFICADO CON ICONOS MINIMALISTAS SUTILES ---
+                            let selectClass = "status-select text-[10.5px] font-bold rounded-md border py-1 pl-2 pr-6 cursor-pointer w-full shadow-sm outline-none transition-all ";
+
+                            if (isThisRowCritico) {
+                                selectClass += "bg-red-100 text-red-700 border-red-400 animate-pulse ring-1 ring-red-400";
+                            } else if (estadoLimpio === 'Pendiente' || estadoLimpio === '') {
+                                selectClass += "bg-amber-100 text-amber-800 border-amber-300";
+                            } else if (estadoLimpio === 'En Proceso') {
+                                selectClass += "bg-blue-100 text-blue-800 border-blue-400";
+                            } else if (estadoLimpio === 'Informado') {
+                                selectClass += "bg-emerald-100 text-emerald-800 border-emerald-300";
+                            } else {
+                                selectClass += "bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600";
+                            }
+
+                            // Símbolos tipográficos elegantes: ⚠ (Alerta), ◷ (Reloj/Pendiente), ↻ (Proceso), ✓ (Check), — (Nada)
+                            const selectUnified = `
+                            <select onchange="updateEstado('${r._id}', this.value)" class="${selectClass}">
+                                <option value="Pendiente" ${estadoLimpio === 'Pendiente' || estadoLimpio === '' ? 'selected' : ''}>${isThisRowCritico ? '⚠ CRÍTICO' : '◷ Pendiente'}</option>
+                                <option value="En Proceso" ${estadoLimpio === 'En Proceso' ? 'selected' : ''}>↻ En Proceso</option>
+                                <option value="Informado" ${estadoLimpio === 'Informado' ? 'selected' : ''}>✓ Informado</option>
+                                <option value="Ninguno" ${estadoLimpio === 'Ninguno' ? 'selected' : ''}>— Ninguno</option>
+                            </select>
+                        `;
+
+                            const contrasteBadge = (r.contraste === 'Sí' || r.contraste === 'Si')
+                                ? `<div class="mx-auto w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[9px] shadow-sm">C+</div>`
+                                : `<span class="text-slate-400">—</span>`;
+
+                            let fl = r.fecha || '';
+                            if (typeof formatearFechaLimpia === 'function') fl = formatearFechaLimpia(fl);
+                            else if (fl.includes('-')) fl = fl.split('-').reverse().join('/');
+
+                            const btnClass = r.diagnostico ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-200';
+                            const btnIcon = r.diagnostico ?
+                                `<svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>` :
+                                `<svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>`;
+                            const btnText = r.diagnostico ? 'Ver / Editar' : 'Cargar';
+
+                            let tiempoText = '—';
+                            let tiempoColor = 'text-slate-600';
+                            if (estadoLimpio !== 'Informado' && estadoLimpio !== 'Ninguno' && r._diffHrs !== undefined) {
+                                tiempoText = Math.floor(r._diffHrs) + 'h';
+                                if (r._diffHrs >= 24) tiempoColor = 'text-red-600 font-extrabold dark:text-red-400';
+                            }
+
+                            tbody.innerHTML += `
+                        <tr class="${rowBg} border-b border-slate-300 dark:border-slate-700 transition-colors">
+                            <td class="px-3 py-2 text-[10px] mono opacity-50">${r._n || '-'}</td>
+                            <td class="px-3 py-2 text-[10px] whitespace-nowrap">${fl} <br> <span class="font-semibold text-slate-600">${r.turno}</span></td>
+                            <td class="px-3 py-2 text-[11px] font-bold min-w-[160px] leading-tight">${r.nombre}</td>
+                            <td class="px-3 py-2 text-[10px] mono font-bold text-blue-700 dark:text-blue-400">${r.hc}</td>
+                            <td class="px-3 py-2 text-[10px] max-w-[160px] font-medium leading-tight">${r.tipo}</td>
+                            <td class="px-3 py-2 text-center">${contrasteBadge}</td>
+                            <td class="px-3 py-2 text-[9px]"><span class="inline-block px-1.5 py-0.5 rounded-full border bg-slate-50 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-300 font-semibold">${r.procedencia}</span></td>
+                            <td class="px-3 py-2 text-[10px] font-medium">${r.medico}</td>
+                            <td class="px-3 py-2 text-[9px] max-w-[140px] leading-tight">${r.solicitante || '—'}</td>
+                            <td class="px-2 py-2 min-w-[125px]">
+                                ${selectUnified}
+                            </td>
+                            <td class="px-3 py-2 text-[10px] text-center ${tiempoColor}">${tiempoText}</td>
+                            <td class="px-3 py-2 text-center min-w-[110px]">
+                            <button onclick="openInformeModal('${r._id}')" class="inline-flex items-center justify-center gap-1 w-full py-1 border rounded text-[10px] font-bold ${btnClass} transition-colors mb-1 shadow-sm">${btnIcon} ${btnText}</button>
+                            <div class="text-[9px] text-slate-500 dark:text-slate-400 truncate w-20 mx-auto">${r.diagnostico ? r.diagnostico : '<span class="italic">Sin informe</span>'}</div>
+                            </td>
+                            <td class="px-3 py-2 text-center">
+                            <button onclick="deleteRecord('${r._id}')" class="p-1 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                            </td>
+                        </tr>`;
+                        });
+                    }
+
+                    const iconCritico = `<svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+                    const iconProceso = `<svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+                    const iconPendiente = `<svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`;
+                    const iconInformado = `<svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                    const iconNinguno = `<svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>`;
+
+                    if (activeTab === 'Todos') {
+                        drawGroup('Críticos (> 24 horas)', groupCríticos, iconCritico, true);
+                        drawGroup('En Proceso', groupProceso, iconProceso, false);
+                        drawGroup('Pendientes del Día', groupPendientes, iconPendiente, false);
+                        drawGroup('Informados', groupInformados, iconInformado, false);
+                        drawGroup('Ninguno', groupNinguno, iconNinguno, false);
+                    }
+                    else if (activeTab === 'Pendientes') {
+                        drawGroup('En Proceso', groupProceso, iconProceso, false);
+                        drawGroup('Pendientes del Día', groupPendientes, iconPendiente, false);
+                    }
+                    else if (activeTab === 'Críticos') {
+                        drawGroup('Críticos (> 24 horas)', groupCríticos, iconCritico, true);
+                    }
+                    else if (activeTab === 'Informados') {
+                        drawGroup('Informados', groupInformados, iconInformado, false);
+                    }
+
+                    const tabCount = document.getElementById('tab-count');
+                    if (tabCount) tabCount.innerText = records.length;
+
+                    // PARTE DEL RENDER PARA SOLICITUDES
+                    renderSolicitudes();
+
+                } catch (err) {
+                    console.error("Error crítico en renderTable:", err);
+                    alert("Ocurrió un error al cargar los datos en el Dashboard. Revisa la consola o avísale a tu IA arquitecta.");
+                }
+            }
+
+            function renderSolicitudes() {
+                const solContainer = document.getElementById('solicitudes-container');
+                if (!solContainer) return;
+
+                solContainer.innerHTML = '';
+                // Filtramos TODOS los solicitados (Pendientes e Informados)
+                const activos = records.filter(r => r.solicitado === 'SÍ');
+                const solCount = document.getElementById('sol-count');
+                if (solCount) solCount.innerText = activos.length;
+
+                // ESTADO VACÍO (Círculo corregido, mucho más pequeño)
+                if (activos.length === 0) {
+                    solContainer.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-16 opacity-30">
+                            <div class="w-10 h-10 border-2 border-slate-400 rounded-full flex items-center justify-center mb-3">
+                                <svg class="w-5 h-5 text-slate-800 dark:text-slate-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+                            </div>
+                            <p class="font-bold uppercase tracking-widest text-[10px] text-slate-800 dark:text-slate-100">No hay informes solicitados hoy</p>
+                        </div>`;
+                    return;
+                }
+
+                // AGRUPACIÓN POR MÉDICO INFORMANTE
+                const grupos = activos.reduce((acc, r) => {
+                    const med = r.medico || "SIN ASIGNAR";
+                    if (!acc[med]) acc[med] = [];
+                    acc[med].push(r);
+                    return acc;
+                }, {});
+
+                for (const medico in grupos) {
+                    const isCollapsed = collapsedSolGroups[medico] || false;
+                    const rotateClass = isCollapsed ? "-rotate-90" : "rotate-0";
+                    const displayClass = isCollapsed ? "hidden" : "";
+
+                    solContainer.innerHTML += `
+                        <div class="bg-white dark:bg-darkpanel rounded-xl border border-slate-200 dark:border-darkborder shadow-sm overflow-hidden mb-3">
+                            <!-- BARRA DEL MÉDICO (Más delgada y clickable) -->
+                            <div onclick="toggleSolGroup('${medico}')" 
+                                class="px-5 py-2.5 bg-slate-900 flex justify-between items-center cursor-pointer hover:bg-slate-800 transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <!-- Icono de flecha para indicar que es retraíble -->
+                                    <svg class="w-3 h-3 text-slate-400 transition-transform duration-200 ${rotateClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                    <div class="px-2 py-0.5 rounded bg-blue-600 text-white text-[9px] font-black uppercase tracking-tighter">Médico</div>
+                                    <h3 class="text-xs font-bold text-white tracking-tight">${medico}</h3>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[9px] font-black bg-red-600 text-white px-2.5 py-0.5 rounded-full">${grupos[medico].length} CASOS</span>
+                                </div>
+                            </div>
+                            
+                            <!-- CUERPO DE LA TABLA (Se oculta si está colapsado) -->
+                            <div class="${displayClass}">
+                                <table class="w-full text-left">
+                                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                        ${grupos[medico].map(r => {
+                        const esInformado = r.estado === 'Informado';
+                        const rowClass = esInformado ? "bg-emerald-50/40 dark:bg-emerald-900/10" : "bg-white dark:bg-darkpanel";
+                        const badgeClass = esInformado ? "text-emerald-600" : "text-red-600 animate-pulse";
+                        const dotColor = esInformado ? "bg-emerald-500" : "bg-red-600";
+                        const statusText = esInformado ? "INFORME LISTO" : "INFORME PENDIENTE";
+                        const btnText = esInformado ? "VER" : "INFORMAR";
+                        const btnColor = esInformado ? "bg-emerald-600 hover:bg-emerald-700" : "bg-slate-800 hover:bg-blue-600";
+
+                        return `
+                                            <tr class="${rowClass} hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                                                <td class="px-6 py-3 w-44">
+                                                    <span class="flex items-center gap-1.5 text-[9px] font-black ${badgeClass} uppercase">
+                                                        <span class="w-1.5 h-1.5 ${dotColor} rounded-full"></span> ${statusText}
+                                                    </span>
+                                                </td>
+                                                <td class="px-6 py-3">
+                                                    <div class="font-bold text-sm text-slate-800 dark:text-white">${r.nombre}</div>
+                                                    <div class="text-[10px] mono font-bold text-blue-600">${r.hc}</div>
+                                                </td>
+                                                <td class="px-6 py-3">
+                                                    <div class="text-[10px] font-semibold text-slate-600 dark:text-slate-300">${r.tipo}</div>
+                                                    <div class="text-[8px] text-slate-400 font-bold uppercase">${r.procedencia}</div>
+                                                </td>
+                                                <td class="px-6 py-3">
+                                                    <div class="text-[9px] font-black text-slate-400 uppercase">Solicitado:</div>
+                                                    <div class="text-[10px] font-bold text-slate-700 dark:text-slate-200">${r.origen_solicitud}</div>
+                                                </td>
+                                                <td class="px-6 py-3 text-right">
+                                                    <button onclick="openInformeModal('${r._id}')" 
+                                                        class="px-4 py-1.5 ${btnColor} text-white text-[9px] font-black rounded-lg transition-all shadow-sm">
+                                                        ${btnText}
+                                                    </button>
+                                                </td>
+                                            </tr>`;
+                    }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>`;
+                }
+            }
+
+            async function updateEstado(id, val) {
+                let idx = records.findIndex(x => x._id === id);
+                if (idx > -1) {
+                    records[idx].estado = val;
+                    localStorage.setItem('tc_v7', JSON.stringify(records));
+                    renderTable();
+                }
+
+                try {
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            auth_key: API_SECRET_KEY,
+                            action: 'update',
+                            id: id,
+                            column: 'estado',
+                            value: val,
+                            hoja: records[idx].hoja
+                        })
+                    });
+                } catch (e) { console.error("Error nube:", e); }
+            }
+
+            // 5. MODAL LOGIC
+            function openInformeModal(id) {
+                const r = records.find(x => x._id === id);
+                if (!r) return;
+                editingId = id;
+                document.getElementById('modal-nombre').textContent = r.nombre;
+                document.getElementById('modal-meta').textContent = `${r.tipo} • ${r.hc} • ${r.fecha.split('-').reverse().join('/')}`;
+                document.getElementById('modal-motivo-display').textContent = r.motivo || '(sin motivo registrado)';
+                document.getElementById('modal-diag-text').value = r.diagnostico || '';
+                document.getElementById('modal-estado').value = r.estado;
+                document.getElementById('modal-informe').classList.remove('hidden');
+            }
+
+            function closeInformeModal() {
+                document.getElementById('modal-informe').classList.add('hidden');
+                editingId = null;
+            }
+
+            async function saveInforme() {
+                if (!editingId) return;
+                const diag = document.getElementById('modal-diag-text').value.trim().toUpperCase();
+                let estado = document.getElementById('modal-estado').value;
+
+                if (diag !== '' && estado !== 'Informado') {
+                    estado = 'Informado'; // Auto-completar
+                }
+
+                let idx = records.findIndex(x => x._id === editingId);
+                records[idx].diagnostico = diag;
+                records[idx].estado = estado;
+                localStorage.setItem('tc_v7', JSON.stringify(records));
+
+                closeInformeModal();
+                renderTable();
+                showToast(estado === 'Informado' ? 'Informe guardado y caso cerrado' : 'Informe actualizado', 'success');
+
+                // Subir los cambios a la nube también
+                try {
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            auth_key: API_SECRET_KEY,
+                            action: 'update',
+                            id: editingId,
+                            column: 'estado',
+                            value: estado,
+                            hoja: records[idx].hoja
+                        })
+                    });
+                } catch (e) { }
+            }
+
+            function deleteRecord(id) {
+                if (confirm("¿Está seguro de eliminar este registro permanentemente?")) {
+                    records = records.filter(x => x._id !== id);
+                    localStorage.setItem('tc_v7', JSON.stringify(records));
+                    renderTable();
+                    showToast("Registro eliminado", "warning");
+                }
+            }
+
+            function exportarPendientesPDF() {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'pt', 'a4');
+
+                const pendientes = records.filter(r => r.solicitado === 'SÍ' && r.estado !== 'Informado');
+                if (pendientes.length === 0) {
+                    showToast("No hay pendientes para exportar", "error");
+                    return;
+                }
+
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(18);
+                doc.text("HOSPITAL ARCO IRIS - SERVICIO DE IMÁGENES", 40, 50);
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "normal");
+                doc.text("LISTADO DE INFORMES PENDIENTES (PRIORIDAD)", 40, 70);
+                doc.text(`Fecha de reporte: ${new Date().toLocaleString()}`, 40, 85);
+
+                let yPos = 110;
+                const grupos = pendientes.reduce((acc, r) => {
+                    const med = r.medico || "SIN ASIGNAR";
+                    if (!acc[med]) acc[med] = [];
+                    acc[med].push(r);
+                    return acc;
+                }, {});
+
+                for (const medico in grupos) {
+                    doc.setFontSize(10);
+                    doc.setFont("helvetica", "bold");
+                    doc.setFillColor(30, 41, 59);
+                    doc.rect(40, yPos, 515, 20, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.text(`MÉDICO RESPONSABLE: ${medico.toUpperCase()}`, 50, yPos + 14);
+
+                    yPos += 25;
+                    const tableData = grupos[medico].map(r => [r.hc, r.nombre, r.tipo, r.procedencia, r.origen_solicitud]);
+
+                    doc.autoTable({
+                        startY: yPos,
+                        head: [['HC', 'PACIENTE', 'ESTUDIO', 'PROCEDENCIA', 'SOLICITADO POR']],
+                        body: tableData,
+                        theme: 'striped',
+                        headStyles: { fillColor: [71, 85, 105], fontSize: 8 },
+                        styles: { fontSize: 8, cellPadding: 5 },
+                        margin: { left: 40, right: 40 }
+                    });
+
+                    yPos = doc.lastAutoTable.finalY + 30;
+                    doc.setTextColor(0, 0, 0);
+                    if (yPos > 750) { doc.addPage(); yPos = 50; }
+                }
+
+                doc.save(`PENDIENTES_IMAGENES_${new Date().toISOString().slice(0, 10)}.pdf`);
+                showToast("PDF generado con éxito", "success");
+            }
+
+            function exportToExcel() {
+                alert("El exportador profesional se activará tras conectar Google Sheets completamente.");
+            }
+
+            // Inicializar Fecha
+            document.getElementById('f_fecha').value = getBoliviaDateStr();
+            if (document.getElementById('sol-fecha-input')) {
+                document.getElementById('sol-fecha-input').value = new Date().toISOString().split('T')[0];
+            }
+            renderTable();
+            updateDatalists();
+        </script>
+
+        <!-- Modal Fecha Personalizada -->
+        <div id="custom-date-modal"
+            class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center">
+            <div
+                class="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-2xl w-80 border border-slate-200 dark:border-slate-700">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-4">Rango Personalizado</h3>
+                <div class="flex flex-col gap-3">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">Desde</label>
+                        <input type="date" id="custom-date-start"
+                            class="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white mt-1">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">Hasta</label>
+                        <input type="date" id="custom-date-end"
+                            class="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white mt-1">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-5">
+                    <button onclick="closeCustomDateModal()"
+                        class="px-3 py-1.5 text-sm font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">Cancelar</button>
+                    <button onclick="applyCustomDate()"
+                        class="px-3 py-1.5 text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-md">Aplicar
+                        Filtro</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
