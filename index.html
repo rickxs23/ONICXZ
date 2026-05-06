@@ -907,9 +907,26 @@
                         style="background:radial-gradient(ellipse at 70% 50%, rgba(59,130,246,.15) 0%, transparent 70%);">
                     </div>
                     <div class="relative">
-                        <div class="flex items-center gap-2 mb-1">
-                            <div class="w-1.5 h-4 rounded-full bg-blue-500"></div>
-                            <h2 class="text-white font-bold text-base tracking-tight">Registro Operativo de Turno</h2>
+                        <div class="flex items-center justify-between gap-2 mb-1">
+                            <div class="flex items-center gap-2">
+                                <div class="w-1.5 h-4 rounded-full bg-blue-500"></div>
+                                <h2 class="text-white font-bold text-base tracking-tight">Registro Operativo de Turno
+                                </h2>
+                            </div>
+                            <!-- SWITCH: Múltiples Estudios -->
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-slate-400 text-xs font-semibold">Múltiples Estudios</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="switch-multiples" class="sr-only peer">
+                                    <div
+                                        class="w-9 h-5 rounded-full bg-slate-600 peer peer-checked:bg-blue-500 transition-colors relative">
+                                    </div>
+                                    <div
+                                        class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow-md peer-checked:translate-x-4 transition-all">
+                                    </div>
+                                </label>
+                                <span id="multiples-text" class="text-xs font-bold text-slate-500">Off</span>
+                            </div>
                         </div>
                         <p class="text-slate-400 text-xs ml-3.5">Mayúsculas automáticas · Contraste en prefijo · <span
                                 class="text-blue-400">Enter en Motivo = Ctrl+Enter para guardar</span></p>
@@ -973,13 +990,17 @@
                         <div class="flex flex-col gap-1.5">
                             <label class="section-label">N° HC *</label>
                             <input type="text" id="f_hc" class="field field-req mono font-bold uppercase"
-                                autocomplete="off" required placeholder="Ej: 00000" />
+                                autocomplete="off" required placeholder="Ej: 00000"
+                                oninput="autocompletarPacientePorHC(this.value)" />
                         </div>
                         <div class="md:col-span-2 flex flex-col gap-1.5">
                             <label class="section-label">Paciente — Apellidos y Nombres *</label>
                             <div class="flex gap-2">
                                 <input type="text" id="f_apellidos" placeholder="APELLIDOS"
-                                    class="field field-req w-1/2 uppercase font-semibold" autocomplete="off" required />
+                                    class="field field-req w-1/2 uppercase font-semibold" autocomplete="off" required
+                                    list="apellidos-match-list" oninput="onApellidoSelect(this.value)" />
+                                <datalist id="apellidos-match-list"></datalist>
+
                                 <input type="text" id="f_nombres" placeholder="NOMBRES"
                                     class="field w-1/2 uppercase font-semibold" autocomplete="off" required />
                             </div>
@@ -1035,12 +1056,14 @@
                             <div class="flex gap-1.5">
                                 <input type="text" id="f_sol_apellido" placeholder="APELLIDO"
                                     class="field field-req w-1/2 uppercase text-xs" autocomplete="off" required
-                                    title="Ingrese el apellido del médico solicitante" list="sol-apellidos-list" />
+                                    title="Ingrese el apellido del médico solicitante" list="sol-apellidos-list"
+                                    oninput="onSolApellidoInput(this.value)" />
                                 <datalist id="sol-apellidos-list"></datalist>
 
                                 <input type="text" id="f_sol_nombre" placeholder="NOMBRE"
                                     class="field field-req w-1/2 uppercase text-xs" autocomplete="off" required
-                                    title="Ingrese el nombre del médico solicitante" list="sol-nombres-list" />
+                                    title="Ingrese el nombre del médico solicitante" list="sol-nombres-list"
+                                    oninput="onSolNombreInput(this.value)" />
                                 <datalist id="sol-nombres-list"></datalist>
                             </div>
                         </div>
@@ -1245,6 +1268,20 @@
                             <option>Dr. Fernando Saavedra</option>
                             <option>Dr. Alvaro Sánchez</option>
                         </select>
+                        <!-- Trigger Estadísticas -->
+                        <button onclick="openStatsDrawer()"
+                            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all"
+                            style="background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2);color:#c084fc;"
+                            title="Ver estadísticas de productividad">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path d="M3 3v18h18" />
+                                <path d="M18 17V9" />
+                                <path d="M13 17V5" />
+                                <path d="M8 17v-3" />
+                            </svg>
+                            <span class="text-[10px] font-bold tracking-wide">Stats</span>
+                        </button>
                     </div>
 
                     <!-- Search -->
@@ -1361,6 +1398,17 @@
                     </div>
                 </div>
             </div>
+            <!-- Toggle Pendientes / Archivados -->
+            <div class="flex items-center gap-3 px-1">
+                <button id="sol-toggle-pending" onclick="setSolVista('pendientes')"
+                    class="px-3 py-1 rounded-md text-xs font-bold transition-all"
+                    style="background:rgba(239,68,68,.2);color:#fca5a5;border:1px solid rgba(239,68,68,.3);">●
+                    Pendientes</button>
+                <button id="sol-toggle-archive" onclick="setSolVista('archivados')"
+                    class="px-3 py-1 rounded-md text-xs font-semibold transition-all"
+                    style="background:rgba(100,116,139,.1);color:#64748b;border:1px solid rgba(100,116,139,.2);">✓
+                    Archivados</button>
+            </div>
             <div id="solicitudes-container" class="space-y-4"></div>
         </section>
 
@@ -1459,6 +1507,54 @@
 
         <!-- TOAST -->
         <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2"></div>
+
+        <!-- ╔══════════════════════ STATS DRAWER ══════════════════════╗ -->
+        <div id="stats-drawer-overlay" class="hidden fixed inset-0 z-[60]" onclick="closeStatsDrawer()"
+            style="background:rgba(2,6,23,.5);backdrop-filter:blur(4px);"></div>
+        <div id="stats-drawer" class="fixed top-0 right-0 h-full z-[61] flex flex-col"
+            style="width:360px;background:linear-gradient(180deg,#080f1e,#0c1529);border-left:1px solid rgba(168,85,247,.2);box-shadow:-20px 0 60px rgba(0,0,0,.6);transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);">
+            <!-- Drawer header -->
+            <div class="px-6 py-5 flex items-center justify-between"
+                style="border-bottom:1px solid rgba(168,85,247,.12);">
+                <div>
+                    <p class="mono text-purple-400 font-bold tracking-[.15em]" style="font-size:9px;">PRODUCTIVIDAD</p>
+                    <h3 id="stats-drawer-title" class="text-white font-bold text-base mt-0.5">Todos los Médicos</h3>
+                </div>
+                <button onclick="closeStatsDrawer()"
+                    class="text-slate-600 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <!-- KPI cards -->
+            <div class="px-6 py-4 grid grid-cols-3 gap-3" style="border-bottom:1px solid rgba(168,85,247,.08);">
+                <div class="rounded-xl p-3 text-center"
+                    style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.15);">
+                    <p class="mono font-black text-2xl text-purple-300" id="kpi-hoy">0</p>
+                    <p class="text-[9px] font-bold text-slate-500 mt-0.5 uppercase tracking-wider">Hoy</p>
+                </div>
+                <div class="rounded-xl p-3 text-center"
+                    style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.15);">
+                    <p class="mono font-black text-2xl text-blue-300" id="kpi-semana">0</p>
+                    <p class="text-[9px] font-bold text-slate-500 mt-0.5 uppercase tracking-wider">Semana</p>
+                </div>
+                <div class="rounded-xl p-3 text-center"
+                    style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.15);">
+                    <p class="mono font-black text-2xl text-emerald-300" id="kpi-mes">0</p>
+                    <p class="text-[9px] font-bold text-slate-500 mt-0.5 uppercase tracking-wider">Este Mes</p>
+                </div>
+            </div>
+            <!-- Chart: últimos 7 días -->
+            <div class="px-6 py-4 flex-1 overflow-y-auto">
+                <p class="section-label mb-3">Informes — Últimos 7 días</p>
+                <div id="stats-bar-chart" class="space-y-2"></div>
+            </div>
+            <!-- Footer -->
+            <div class="px-6 py-3" style="border-top:1px solid rgba(168,85,247,.08);">
+                <p class="text-[10px] text-slate-600 mono">Basado en registros con estado Informado</p>
+            </div>
+        </div>
 
         <!-- ╔══════════════════════════════════ FIREBASE MODULE ═══════╗ -->
         <script type="module">
@@ -1612,6 +1708,16 @@
                         contrasteOn = chk.checked;
                         txt.textContent = contrasteOn ? 'Sí' : 'No';
                         txt.style.color = contrasteOn ? '#60a5fa' : '#64748b';
+                    });
+                }
+                // Switch Múltiples Estudios: listener
+                const swMultiples = document.getElementById('switch-multiples');
+                const swMultiplesText = document.getElementById('multiples-text');
+                if (swMultiples && swMultiplesText) {
+                    swMultiples.addEventListener('change', () => {
+                        const on = swMultiples.checked;
+                        swMultiplesText.textContent = on ? 'On' : 'Off';
+                        swMultiplesText.style.color = on ? '#60a5fa' : '#64748b';
                     });
                 }
                 // FIX U-01: Ctrl+Enter only in textarea
@@ -1897,7 +2003,13 @@
                     // Aprender: actualizar mapa médico → especialidad con este nuevo registro
                     if (solFull && rec.especialidad) actualizarMapaEspecialidad(solFull, rec.especialidad);
                     showToast('✓ Estudio guardado en Firebase ☁️', 'success');
-                    resetFormCustom();
+                    // Switch Múltiples Estudios: limpiar solo campos del estudio si está encendido
+                    const swMultiples = document.getElementById('switch-multiples');
+                    if (swMultiples && swMultiples.checked) {
+                        resetSoloEstudio();
+                    } else {
+                        resetFormCustom();
+                    }
                     document.getElementById('f_hc').focus();
                 } catch (err) {
                     console.error(err);
@@ -1921,6 +2033,29 @@
                 if (txt) { txt.textContent = 'No'; txt.style.color = '#64748b'; }
                 document.getElementById('mod-select').value = 'TC';
                 setModalidad('TC');
+            }
+
+            // Limpia solo los campos del estudio (Múltiples Estudios ON)
+            function resetSoloEstudio() {
+                // Limpiar estudio
+                document.getElementById('f_tipo').value = '';
+                document.getElementById('mod-select').value = 'TC';
+                setModalidad('TC');
+                // Limpiar médico solicitante y especialidad
+                document.getElementById('f_sol_apellido').value = '';
+                document.getElementById('f_sol_nombre').value = '';
+                document.getElementById('f_especialidad').value = '';
+                // Limpiar contraste
+                contrasteOn = false;
+                const chk = document.getElementById('f_contraste');
+                if (chk) chk.checked = false;
+                const txt = document.getElementById('contraste-text');
+                if (txt) { txt.textContent = 'No'; txt.style.color = '#64748b'; }
+                // Limpiar motivo
+                document.getElementById('f_motivo').value = '';
+                // Restaurar prioridad/estado
+                const estEl = document.getElementById('f_estado');
+                if (estEl) estEl.value = 'Pendiente';
             }
 
             // ── Update Estado (FIX B-02) ─────────────────────────────────────
@@ -2101,27 +2236,60 @@
                 renderSolicitudes();
             }
 
+            // ── Estado de vista de Solicitudes (pendientes / archivados) ────
+            let solVista = 'pendientes'; // 'pendientes' | 'archivados'
+
+            function setSolVista(v) {
+                solVista = v;
+                const btnP = document.getElementById('sol-toggle-pending');
+                const btnA = document.getElementById('sol-toggle-archive');
+                if (btnP && btnA) {
+                    if (v === 'pendientes') {
+                        btnP.style.cssText = 'background:rgba(239,68,68,.2);color:#fca5a5;border:1px solid rgba(239,68,68,.3);';
+                        btnA.style.cssText = 'background:rgba(100,116,139,.1);color:#64748b;border:1px solid rgba(100,116,139,.2);';
+                    } else {
+                        btnA.style.cssText = 'background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3);';
+                        btnP.style.cssText = 'background:rgba(100,116,139,.1);color:#64748b;border:1px solid rgba(100,116,139,.2);';
+                    }
+                }
+                renderSolicitudes();
+            }
+
             function renderSolicitudes() {
                 const cont = document.getElementById('solicitudes-container');
                 if (!cont) return;
-                const activos = window.records.filter(r => r.solicitado === 'SÍ');
+
+                // Todos los que tienen solicitado=SÍ
+                const todos = window.records.filter(r => r.solicitado === 'SÍ');
+                // Pendientes: estado DISTINTO de Informado
+                const pendientes = todos.filter(r => r.estado !== 'Informado');
+                // Archivados: estado === Informado
+                const archivados = todos.filter(r => r.estado === 'Informado');
+
+                // El contador del tab muestra solo los pendientes
                 const sc = document.getElementById('sol-count');
-                if (sc) sc.textContent = activos.length;
-                if (activos.length === 0) {
+                if (sc) sc.textContent = pendientes.length;
+
+                const lista = solVista === 'archivados' ? archivados : pendientes;
+                const esArchivo = solVista === 'archivados';
+
+                if (lista.length === 0) {
                     cont.innerHTML = `<div class="text-center py-20 text-slate-600">
       <div class="w-12 h-12 rounded-full border border-slate-700 flex items-center justify-center mx-auto mb-3">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
       </div>
-      <p class="font-bold uppercase tracking-widest text-xs">Sin solicitudes activas</p>
+      <p class="font-bold uppercase tracking-widest text-xs">${esArchivo ? 'Sin registros archivados' : 'Sin solicitudes pendientes'}</p>
     </div>`;
                     return;
                 }
-                const grupos = activos.reduce((a, r) => { const m = r.medico || 'SIN ASIGNAR'; if (!a[m]) a[m] = []; a[m].push(r); return a; }, {});
+
+                const grupos = lista.reduce((a, r) => { const m = r.medico || 'SIN ASIGNAR'; if (!a[m]) a[m] = []; a[m].push(r); return a; }, {});
                 cont.innerHTML = '';
                 for (const med in grupos) {
                     const col = collapsedSolGroups[med] ?? true;
                     const rot = col ? '-rotate-90' : 'rotate-0';
                     const disp = col ? 'hidden' : '';
+                    const badgeBg = esArchivo ? 'rgba(16,185,129,.25);border:1px solid rgba(16,185,129,.3)' : 'rgba(239,68,68,.25);border:1px solid rgba(239,68,68,.3)';
                     cont.innerHTML += `
     <div class="grad-card overflow-hidden mb-3">
       <div onclick="toggleSolGroup('${med}')" class="px-5 py-3 flex justify-between items-center cursor-pointer hover:bg-blue-500/5 transition-colors"
@@ -2130,12 +2298,11 @@
           <svg class="w-3 h-3 text-slate-500 transition-transform ${rot}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"/>
           </svg>
-          <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider text-blue-400"
-            style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.2);">Médico</span>
+          <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${esArchivo ? 'text-emerald-400' : 'text-blue-400'}"
+            style="background:${esArchivo ? 'rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.2)' : 'rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.2)'};">Médico</span>
           <h3 class="text-sm font-bold text-white">${med}</h3>
         </div>
-        <span class="text-[9px] font-black text-white px-2.5 py-0.5 rounded-full"
-          style="background:rgba(239,68,68,.25);border:1px solid rgba(239,68,68,.3);">${grupos[med].length} CASOS</span>
+        <span class="text-[9px] font-black text-white px-2.5 py-0.5 rounded-full" style="background:${badgeBg};">${grupos[med].length} CASOS</span>
       </div>
       <div class="${disp}">
         <table class="w-full">
@@ -2146,7 +2313,7 @@
                 <td class="px-5 py-3">
                   <span class="text-[9px] font-black ${ok ? 'text-emerald-400' : 'text-red-400 animate-pulse'} uppercase">
                     <span class="w-1.5 h-1.5 rounded-full ${ok ? 'bg-emerald-400' : 'bg-red-400'} inline-block mr-1"></span>
-                    ${ok ? 'INFORME LISTO' : 'PENDIENTE'}
+                    ${ok ? 'ARCHIVADO' : 'PENDIENTE'}
                   </span>
                 </td>
                 <td class="px-5 py-3">
@@ -2211,8 +2378,152 @@
                 const val = especialidad.trim().toUpperCase();
                 if (!key || !val) return;
                 window.medicoEspecialidadMap[key] = val;
-                // Persistir en localStorage para sobrevivir recargas
-                try { localStorage.setItem('hai_med_esp_map', JSON.stringify(window.medicoEspecialidadMap)); } catch (e) { /* cuota excedida */ }
+                try { localStorage.setItem('hai_med_esp_map', JSON.stringify(window.medicoEspecialidadMap)); } catch (e) { }
+            }
+
+            // ── Auto-completado en CASCADA: Apellido → filtra Nombres → rellena Especialidad ──
+            function onSolApellidoInput(apValue) {
+                const ap = apValue.trim().toUpperCase();
+                const snList = document.getElementById('sol-nombres-list');
+                if (!snList) return;
+
+                // Filtrar nombres asociados al apellido escrito desde el historial
+                const base = window.records || [];
+                const nombresMatch = new Set();
+                base.forEach(r => {
+                    if (!r?.solicitante) return;
+                    const partes = r.solicitante.split(',');
+                    const apellido = (partes[0] || '').trim().toUpperCase();
+                    const nombre = (partes[1] || '').trim().toUpperCase();
+                    if (ap && apellido.startsWith(ap) && nombre) nombresMatch.add(nombre);
+                });
+
+                // Actualizar datalist de nombres con coincidencias filtradas
+                if (nombresMatch.size > 0) {
+                    snList.innerHTML = [...nombresMatch].sort().map(n => `<option value="${n}">`).join('');
+                } else {
+                    // Sin filtro: mostrar todos los nombres conocidos
+                    const todosNombres = new Set();
+                    base.forEach(r => {
+                        if (r?.solicitante) {
+                            const p = r.solicitante.split(',');
+                            if (p[1]) todosNombres.add(p[1].trim().toUpperCase());
+                        }
+                    });
+                    snList.innerHTML = [...todosNombres].sort().map(n => `<option value="${n}">`).join('');
+                }
+
+                // Intentar rellenar especialidad si ya hay coincidencia exacta
+                autocompletarEspecialidad();
+            }
+
+            function onSolNombreInput(nomValue) {
+                // Al seleccionar nombre, cruzar Apellido+Nombre para rellenar Especialidad
+                autocompletarEspecialidad();
+            }
+
+            // Global para almacenar coincidencias de HC actuales
+            window.hcMatches = [];
+
+            function autocompletarPacientePorHC(hcValue) {
+                const hc = hcValue.trim().toUpperCase();
+                const apEl = document.getElementById('f_apellidos');
+                const nomEl = document.getElementById('f_nombres');
+                const dl = document.getElementById('apellidos-match-list');
+
+                // 2. Limpieza de Seguridad: si se borra o cambia
+                if (!hc || hc.length < 3) {
+                    if (apEl) apEl.value = '';
+                    if (nomEl) nomEl.value = '';
+                    if (dl) dl.innerHTML = '';
+                    window.hcMatches = [];
+                    return;
+                }
+
+                const base = window.records || [];
+                // 1. Búsqueda con Manejo de Duplicados
+                // 3. Prioridad de Datos Recientes: ordenar por fecha desc
+                const matches = base
+                    .filter(r => r?.hc && String(r.hc).trim().toUpperCase() === hc)
+                    .sort((a, b) => {
+                        const da = parseSafeDate(a.fecha);
+                        const db = parseSafeDate(b.fecha);
+                        return db - da;
+                    });
+
+                if (!matches.length) {
+                    if (dl) dl.innerHTML = '';
+                    window.hcMatches = [];
+                    return;
+                }
+
+                // Identificar pacientes únicos (nombres distintos)
+                const uniquePatients = [];
+                const seenNames = new Set();
+                matches.forEach(m => {
+                    const n = (m.nombre || '').trim().toUpperCase();
+                    if (n && !seenNames.has(n)) {
+                        seenNames.add(n);
+                        uniquePatients.push(m);
+                    }
+                });
+
+                window.hcMatches = uniquePatients;
+
+                if (uniquePatients.length === 1) {
+                    // Condición A: Coincidencia única
+                    fillPatientFields(uniquePatients[0]);
+                    if (dl) dl.innerHTML = '';
+                } else if (uniquePatients.length > 1) {
+                    // Condición B: Coincidencia múltiple
+                    // NO auto-rellenar nada de inmediato
+                    apEl.value = '';
+                    nomEl.value = '';
+                    // Desplegar menú (poblar datalist)
+                    if (dl) {
+                        dl.innerHTML = uniquePatients.map(m => `<option value="${m.nombre}">`).join('');
+                    }
+                    showToast(`Se encontraron ${uniquePatients.length} pacientes distintos con este código. Seleccione el apellido.`, 'warning');
+                }
+            }
+
+            function fillPatientFields(match) {
+                const apEl = document.getElementById('f_apellidos');
+                const nomEl = document.getElementById('f_nombres');
+                const procEl = document.getElementById('f_procedencia');
+                if (!apEl || !nomEl) return;
+
+                const full = (match.nombre || '').trim().toUpperCase();
+                const partes = full.split(' ');
+
+                // Lógica de separación: si hay al menos 2 palabras, primeras 2 = apellidos, resto = nombres
+                if (partes.length >= 2) {
+                    apEl.value = partes.slice(0, 2).join(' ');
+                    nomEl.value = partes.slice(2).join(' ') || partes[1];
+                } else {
+                    apEl.value = full;
+                    nomEl.value = '';
+                }
+
+                if (procEl && !procEl.value.trim() && match.procedencia) {
+                    procEl.value = match.procedencia;
+                }
+
+                // Flash verde de confirmación
+                [apEl, nomEl].forEach(el => {
+                    el.style.borderColor = '#10b981';
+                    el.style.boxShadow = '0 0 0 3px rgba(16,185,129,.15)';
+                    setTimeout(() => { el.style.borderColor = ''; el.style.boxShadow = ''; }, 1800);
+                });
+            }
+
+            function onApellidoSelect(val) {
+                const v = val.trim().toUpperCase();
+                // Buscar si el valor ingresado coincide exactamente con uno de los nombres en los matches
+                const match = window.hcMatches.find(m => (m.nombre || '').trim().toUpperCase() === v);
+                if (match) {
+                    fillPatientFields(match);
+                }
             }
 
             function autocompletarEspecialidad() {
@@ -2221,16 +2532,15 @@
                 const espField = document.getElementById('f_especialidad');
                 if (!espField || espField.value.trim()) return; // ya tiene texto: respetar edición manual
 
-                // Construir la clave exacta igual que solFull en handleSubmit
                 let key = '';
                 if (ap && nom) key = `${ap}, ${nom}`;
                 else if (ap) key = ap;
-                else return; // nada escrito aún
+                else return;
 
-                // 1. Búsqueda exacta por clave completa
+                // 1. Búsqueda exacta
                 let encontrada = window.medicoEspecialidadMap[key];
 
-                // 2. Fallback: coincidencia parcial por apellido (si solo tienen el apellido escrito)
+                // 2. Fallback: coincidencia por apellido
                 if (!encontrada && ap) {
                     const match = Object.entries(window.medicoEspecialidadMap)
                         .find(([k]) => k === ap || k.startsWith(ap + ','));
@@ -2239,7 +2549,6 @@
 
                 if (encontrada) {
                     espField.value = encontrada;
-                    // Flash verde de confirmación
                     espField.style.borderColor = '#10b981';
                     espField.style.boxShadow = '0 0 0 3px rgba(16,185,129,.15)';
                     setTimeout(() => { espField.style.borderColor = ''; espField.style.boxShadow = ''; }, 1800);
@@ -2356,8 +2665,12 @@
                 ).length);
 
                 set('stat-proceso', recs.filter(r => r?.estado === 'En Proceso').length);
+                // FIX CRITICOS: excluir estrictamente los que ya están Informados
                 set('stat-critico', recs.filter(r => {
-                    if (r?.estado === 'Informado' || r?.estado === 'Ninguno' || r?.procedimiento_informe === 'Ninguno') return false;
+                    if (!r) return false;
+                    const st = (r?.estado || '').trim();
+                    // Excluir Informado, Ninguno y cualquier procedimiento_informe=Ninguno
+                    if (st === 'Informado' || st === 'Ninguno' || r?.procedimiento_informe === 'Ninguno') return false;
                     const bt = parseSafeDate(r?.fecha);
                     const turno = (r?.turno || '').toLowerCase();
                     if (turno.includes('mañana')) bt.setHours(8, 0, 0, 0);
@@ -2912,6 +3225,61 @@
                         setTimeout(() => t.remove(), 300);
                     }
                 }, 6000); // Más tiempo para leer alertas complejas
+            }
+
+            // ── Stats Drawer ──────────────────────────────────────────────────
+            function openStatsDrawer() {
+                const medico = document.getElementById('filter-medico')?.value || '';
+                const title = document.getElementById('stats-drawer-title');
+                if (title) title.textContent = medico || 'Todos los Médicos';
+
+                const base = (window.records || []).filter(r => r?.estado === 'Informado');
+                const recs = medico ? base.filter(r => r?.medico === medico) : base;
+
+                const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+                const semanaInicio = new Date(hoy); semanaInicio.setDate(hoy.getDate() - 6);
+                const mesInicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+
+                const kpiHoy = recs.filter(r => { const d = parseSafeDate(r?.fecha); d.setHours(0, 0, 0, 0); return d.getTime() === hoy.getTime(); }).length;
+                const kpiSem = recs.filter(r => { const d = parseSafeDate(r?.fecha); d.setHours(0, 0, 0, 0); return d >= semanaInicio && d <= hoy; }).length;
+                const kpiMes = recs.filter(r => { const d = parseSafeDate(r?.fecha); return d >= mesInicio && d <= hoy; }).length;
+
+                document.getElementById('kpi-hoy').textContent = kpiHoy;
+                document.getElementById('kpi-semana').textContent = kpiSem;
+                document.getElementById('kpi-mes').textContent = kpiMes;
+
+                // Barras de los últimos 7 días
+                const barChart = document.getElementById('stats-bar-chart');
+                if (barChart) {
+                    const dias = [];
+                    for (let i = 6; i >= 0; i--) {
+                        const d = new Date(hoy); d.setDate(hoy.getDate() - i);
+                        const count = recs.filter(r => { const rd = parseSafeDate(r?.fecha); rd.setHours(0, 0, 0, 0); return rd.getTime() === d.getTime(); }).length;
+                        dias.push({ label: d.toLocaleDateString('es-BO', { weekday: 'short', day: 'numeric' }), count });
+                    }
+                    const maxVal = Math.max(...dias.map(d => d.count), 1);
+                    barChart.innerHTML = dias.map(d => {
+                        const pct = Math.round((d.count / maxVal) * 100);
+                        const isToday = d === dias[dias.length - 1];
+                        return `<div class="flex items-center gap-2">
+                            <span class="text-[9px] text-slate-500 mono w-14 text-right flex-shrink-0">${d.label}</span>
+                            <div class="flex-1 rounded-full overflow-hidden" style="background:rgba(255,255,255,.05);height:6px;">
+                                <div style="width:${pct}%;height:100%;background:${pct > 60 ? 'linear-gradient(90deg,#7c3aed,#a855f7)' : 'linear-gradient(90deg,#3b82f6,#60a5fa)'};border-radius:99px;transition:width .4s ease;"></div>
+                            </div>
+                            <span class="mono text-[10px] font-bold w-4 text-right" style="color:${d.count > 0 ? '#c084fc' : '#334155'};">${d.count}</span>
+                        </div>`;
+                    }).join('');
+                }
+
+                document.getElementById('stats-drawer-overlay').classList.remove('hidden');
+                const drawer = document.getElementById('stats-drawer');
+                requestAnimationFrame(() => { requestAnimationFrame(() => { drawer.style.transform = 'translateX(0)'; }); });
+            }
+
+            function closeStatsDrawer() {
+                const drawer = document.getElementById('stats-drawer');
+                if (drawer) drawer.style.transform = 'translateX(100%)';
+                setTimeout(() => { document.getElementById('stats-drawer-overlay')?.classList.add('hidden'); }, 300);
             }
 
             // ── Initialize ────────────────────────────────────────────────────
