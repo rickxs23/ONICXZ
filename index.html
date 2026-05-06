@@ -938,9 +938,17 @@
                         </div>
                         <div class="flex flex-col gap-1.5">
                             <label class="section-label">Méd. Informante *</label>
-                            <input type="text" id="f_medico" class="field field-req font-semibold" list="medicos-list"
-                                placeholder="Nombre del médico informante" autocomplete="off" required
-                                onblur="validarMedicoInformante(this)" />
+                            <div class="relative">
+                                <input type="text" id="f_medico" class="field field-req font-semibold w-full"
+                                    list="medicos-list" placeholder="Nombre del médico informante" autocomplete="off"
+                                    required onblur="validarMedicoInformante(this)" />
+                                <!-- Badge de bloqueo por Coronarias -->
+                                <span id="coronarias-lock-badge"
+                                    class="hidden absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black pointer-events-none"
+                                    style="background:rgba(16,185,129,.2);border:1px solid rgba(16,185,129,.4);color:#6ee7b7;">
+                                    🔒 AUTO
+                                </span>
+                            </div>
                             <datalist id="medicos-list">
                                 <option value="Dra. Tania Arce">
                                 <option value="Dra. Vanessa Ferrufino">
@@ -1227,7 +1235,8 @@
                             </div>
                         </div>
 
-                        <select id="filter-medico" onchange="renderTable(); updateStatCards();"
+                        <select id="filter-medico"
+                            onchange="renderTable(); updateStatCards(); checkDoctorAlerts(this.value);"
                             class="field py-1.5 text-xs" style="width:auto;font-size:12px;">
                             <option value="">Todos los médicos</option>
                             <option>Dra. Tania Arce</option>
@@ -1628,6 +1637,45 @@
                         menu.classList.add('hidden');
                     }
                 });
+                // ── Autocompletado de Especialidad por Médico Solicitante ──────
+                const solAp = document.getElementById('f_sol_apellido');
+                const solNom = document.getElementById('f_sol_nombre');
+                if (solAp) {
+                    solAp.addEventListener('blur', autocompletarEspecialidad);
+                    solAp.addEventListener('change', autocompletarEspecialidad);
+                    solAp.addEventListener('input', autocompletarEspecialidad);
+                }
+                if (solNom) {
+                    solNom.addEventListener('blur', autocompletarEspecialidad);
+                    solNom.addEventListener('change', autocompletarEspecialidad);
+                    solNom.addEventListener('input', autocompletarEspecialidad);
+                }
+                // ── Regla Coronarias: escuchar el campo de estudio en tiempo real ──
+                const tipoInp = document.getElementById('f_tipo');
+                if (tipoInp) {
+                    tipoInp.addEventListener('input', validarEstudioCoronarias);
+                    tipoInp.addEventListener('change', validarEstudioCoronarias);
+                }
+                // ── Guardia anti-override en f_medico cuando estudio es Coronarias ─
+                const medicoInp = document.getElementById('f_medico');
+                if (medicoInp) {
+                    medicoInp.addEventListener('input', () => {
+                        const tipo = (document.getElementById('f_tipo')?.value || '').toUpperCase();
+                        const esCoronaria = tipo.includes('CORONARIA') || tipo.includes('SCORE DE CALCIO');
+                        if (esCoronaria && medicoInp.value.trim() !== 'Dra. Melvi Flores') {
+                            // Revert inmediato — usar requestAnimationFrame para no pisar la edición del browser
+                            requestAnimationFrame(() => {
+                                medicoInp.value = 'Dra. Melvi Flores';
+                                showToast('🔒 Coronarias: médico informante bloqueado en Dra. Melvi Flores', 'warning');
+                            });
+                        }
+                    });
+                    medicoInp.addEventListener('blur', () => {
+                        const tipo = (document.getElementById('f_tipo')?.value || '').toUpperCase();
+                        const esCoronaria = tipo.includes('CORONARIA') || tipo.includes('SCORE DE CALCIO');
+                        if (esCoronaria) medicoInp.value = 'Dra. Melvi Flores';
+                    });
+                }
             });
 
             // ── Clock ────────────────────────────────────────────────────────
@@ -1711,7 +1759,8 @@
                         btn.className = 'px-5 py-2 text-sm font-medium rounded-t-lg text-slate-500 hover:text-slate-300 transition-all';
                     }
                 });
-                if (tab === 'dashboard' || tab === 'solicitudes') renderTable();
+                if (tab === 'dashboard') { collapsedGroups = {}; renderTable(); }
+                else if (tab === 'solicitudes') { collapsedSolGroups = {}; renderTable(); }
             }
 
             // ── Format helpers ────────────────────────────────────────────────
@@ -1845,6 +1894,8 @@
                 try {
                     const ref = await window.fbAddDoc(window.fbCol(window.db, 'pacientes'), rec);
                     rec._id_firebase = ref.id;
+                    // Aprender: actualizar mapa médico → especialidad con este nuevo registro
+                    if (solFull && rec.especialidad) actualizarMapaEspecialidad(solFull, rec.especialidad);
                     showToast('✓ Estudio guardado en Firebase ☁️', 'success');
                     resetFormCustom();
                     document.getElementById('f_hc').focus();
@@ -2068,7 +2119,7 @@
                 const grupos = activos.reduce((a, r) => { const m = r.medico || 'SIN ASIGNAR'; if (!a[m]) a[m] = []; a[m].push(r); return a; }, {});
                 cont.innerHTML = '';
                 for (const med in grupos) {
-                    const col = collapsedSolGroups[med] || false;
+                    const col = collapsedSolGroups[med] ?? true;
                     const rot = col ? '-rotate-90' : 'rotate-0';
                     const disp = col ? 'hidden' : '';
                     cont.innerHTML += `
@@ -2150,21 +2201,90 @@
                 sel.style.borderColor = cfg.border;
             }
 
+            // ── Mapa Médico → Especialidad (autocompletado inteligente) ────────
+            // Clave: "APELLIDO, NOMBRE" (uppercase) → Valor: "ESPECIALIDAD" (uppercase)
+            window.medicoEspecialidadMap = JSON.parse(localStorage.getItem('hai_med_esp_map') || '{}');
+
+            function actualizarMapaEspecialidad(solicitante, especialidad) {
+                if (!solicitante || !especialidad) return;
+                const key = solicitante.trim().toUpperCase();
+                const val = especialidad.trim().toUpperCase();
+                if (!key || !val) return;
+                window.medicoEspecialidadMap[key] = val;
+                // Persistir en localStorage para sobrevivir recargas
+                try { localStorage.setItem('hai_med_esp_map', JSON.stringify(window.medicoEspecialidadMap)); } catch (e) { /* cuota excedida */ }
+            }
+
+            function autocompletarEspecialidad() {
+                const ap = (document.getElementById('f_sol_apellido')?.value || '').trim().toUpperCase();
+                const nom = (document.getElementById('f_sol_nombre')?.value || '').trim().toUpperCase();
+                const espField = document.getElementById('f_especialidad');
+                if (!espField || espField.value.trim()) return; // ya tiene texto: respetar edición manual
+
+                // Construir la clave exacta igual que solFull en handleSubmit
+                let key = '';
+                if (ap && nom) key = `${ap}, ${nom}`;
+                else if (ap) key = ap;
+                else return; // nada escrito aún
+
+                // 1. Búsqueda exacta por clave completa
+                let encontrada = window.medicoEspecialidadMap[key];
+
+                // 2. Fallback: coincidencia parcial por apellido (si solo tienen el apellido escrito)
+                if (!encontrada && ap) {
+                    const match = Object.entries(window.medicoEspecialidadMap)
+                        .find(([k]) => k === ap || k.startsWith(ap + ','));
+                    if (match) encontrada = match[1];
+                }
+
+                if (encontrada) {
+                    espField.value = encontrada;
+                    // Flash verde de confirmación
+                    espField.style.borderColor = '#10b981';
+                    espField.style.boxShadow = '0 0 0 3px rgba(16,185,129,.15)';
+                    setTimeout(() => { espField.style.borderColor = ''; espField.style.boxShadow = ''; }, 1800);
+                }
+            }
+
+            // ── Regla Coronarias: bloqueo en tiempo real del médico informante ──
+            function validarEstudioCoronarias() {
+                const tipo = (document.getElementById('f_tipo')?.value || '').toUpperCase();
+                const medEl = document.getElementById('f_medico');
+                const badge = document.getElementById('coronarias-lock-badge');
+                if (!medEl) return;
+
+                const esCoronaria = tipo.includes('CORONARIA') || tipo.includes('SCORE DE CALCIO');
+
+                if (esCoronaria) {
+                    // Bloquear silenciosamente — sin cambios de color ni badge
+                    medEl.value = 'Dra. Melvi Flores';
+                    medEl.readOnly = true;
+                } else {
+                    // Desbloquear
+                    medEl.readOnly = false;
+                }
+            }
+
             // ── Datalists retroalimentation ──────────────────────────────────
             window.updateDatalists = function () {
                 const docs = new Set(["RUDDY SOTO", "JAIME CARRASCO", "LUIS BEDREGAL", "MARIO TERAN"]);
                 const esps = new Set(["NEFROLOGÍA", "NEUMOLOGÍA", "CIRUGÍA GENERAL", "TRAUMATOLOGÍA", "NEUROLOGÍA", "CARDIOLOGÍA", "PEDIATRÍA", "URGENCIAS", "ONCOLOGÍA"]);
                 const pacs = new Set();
-                window.records.forEach(r => {
-                    if (r.solicitante) docs.add(String(r.solicitante).toUpperCase());
-                    if (r.especialidad) esps.add(String(r.especialidad).toUpperCase());
-                    if (r.nombre && r.hc) pacs.add(`${r.hc} | ${r.nombre}`);
+                const base = (window.records || []);
+                base.forEach(r => {
+                    if (r?.solicitante) docs.add(String(r.solicitante).toUpperCase());
+                    if (r?.especialidad) esps.add(String(r.especialidad).toUpperCase());
+                    if (r?.nombre && r?.hc) pacs.add(`${r.hc} | ${r.nombre}`);
+                    // Alimentar el mapa dinámicamente desde registros existentes
+                    if (r?.solicitante && r?.especialidad) {
+                        actualizarMapaEspecialidad(r.solicitante, r.especialidad);
+                    }
                 });
 
                 const solApellidos = new Set();
                 const solNombres = new Set();
-                window.records.forEach(r => {
-                    if (r.solicitante) {
+                base.forEach(r => {
+                    if (r?.solicitante) {
                         const partes = r.solicitante.split(',');
                         if (partes[0]) solApellidos.add(partes[0].trim().toUpperCase());
                         if (partes[1]) solNombres.add(partes[1].trim().toUpperCase());
@@ -2175,12 +2295,12 @@
                 const snList = document.getElementById('sol-nombres-list');
                 if (snList) snList.innerHTML = [...solNombres].sort().map(n => `<option value="${n}">`).join('');
 
-                const dl = document.getElementById('solicitantes-list');
-                const el = document.getElementById('esp-list');
-                const pl = document.getElementById('pacientes-list');
-                if (dl) dl.innerHTML = [...docs].sort().map(d => `<option value="${d}">`).join('');
-                if (el) el.innerHTML = [...esps].sort().map(e => `<option value="${e}">`).join('');
-                if (pl) pl.innerHTML = [...pacs].sort().map(p => `<option value="${p}">`).join('');
+                const dlList = document.getElementById('solicitantes-list');
+                const elList = document.getElementById('esp-list');
+                const plList = document.getElementById('pacientes-list');
+                if (dlList) dlList.innerHTML = [...docs].sort().map(d => `<option value="${d}">`).join('');
+                if (elList) elList.innerHTML = [...esps].sort().map(e => `<option value="${e}">`).join('');
+                if (plList) plList.innerHTML = [...pacs].sort().map(p => `<option value="${p}">`).join('');
             };
             const updateDatalists = window.updateDatalists;
 
@@ -2212,9 +2332,10 @@
             window.updateStatCards = function () {
                 const medFiltro = document.getElementById('filter-medico');
                 const medicoSeleccionado = medFiltro ? medFiltro.value : '';
+                const base = (window.records || []);
                 const recs = medicoSeleccionado
-                    ? window.records.filter(r => r.medico === medicoSeleccionado)
-                    : window.records;
+                    ? base.filter(r => r?.medico === medicoSeleccionado)
+                    : base;
 
                 const now = new Date();
                 const set = (id, val) => {
@@ -2225,23 +2346,79 @@
                         setTimeout(() => el.classList.remove('stat-update'), 600);
                     }
                 };
-                const totalRegistros = recs.length;
-                set('stat-total', totalRegistros);
-                set('stat-pendiente', recs.filter(r => r.estado === 'Pendiente' || r.estado === 'Ninguno' || r.estado === 'En Proceso').length);
-                set('stat-proceso', recs.filter(r => r.estado === 'En Proceso').length);
+
+                // 3. Contador 'TOTAL REGISTROS'
+                set('stat-total', recs.length);
+
+                // 2. Ajuste en el Contador 'PENDIENTES' (Lógica corregida y segura)
+                set('stat-pendiente', recs.filter(r =>
+                    r?.estado === 'Pendiente' && r?.procedimiento_informe !== 'Ninguno'
+                ).length);
+
+                set('stat-proceso', recs.filter(r => r?.estado === 'En Proceso').length);
                 set('stat-critico', recs.filter(r => {
-                    if (r.estado === 'Informado') return false;
-                    const bt = parseSafeDate(r.fecha);
-                    const turno = (r.turno || '').toLowerCase();
+                    if (r?.estado === 'Informado' || r?.estado === 'Ninguno' || r?.procedimiento_informe === 'Ninguno') return false;
+                    const bt = parseSafeDate(r?.fecha);
+                    const turno = (r?.turno || '').toLowerCase();
                     if (turno.includes('mañana')) bt.setHours(8, 0, 0, 0);
                     else if (turno.includes('tarde')) bt.setHours(14, 0, 0, 0);
                     else if (turno.includes('noche')) bt.setHours(20, 0, 0, 0);
                     else bt.setHours(12, 0, 0, 0);
                     return (now - bt) / (1000 * 3600) >= 48;
                 }).length);
-                set('stat-informado', recs.filter(r => r.estado === 'Informado').length);
+                set('stat-informado', recs.filter(r => r?.estado === 'Informado').length);
             };
             const updateStatCards = window.updateStatCards;
+
+            // ── Sistema de Alertas por Médico ─────────────────────────────────
+            function checkDoctorAlerts(medico) {
+                if (!medico || medico === "Todos los médicos") return;
+
+                // Evitar repetir alerta en la misma sesión para este médico
+                const sessionKey = 'alert_shown_' + medico.replace(/\s+/g, '_');
+                if (sessionStorage.getItem(sessionKey)) return;
+
+                const recs = (window.records || []).filter(r => r?.medico === medico);
+                const now = new Date();
+
+                // 1. Conteo de Críticos (>48h)
+                const criticosCount = recs.filter(r => {
+                    if (r?.estado === 'Informado' || r?.estado === 'Ninguno' || r?.procedimiento_informe === 'Ninguno') return false;
+                    const bt = parseSafeDate(r?.fecha);
+                    const turno = (r?.turno || '').toLowerCase();
+                    if (turno.includes('mañana')) bt.setHours(8, 0, 0, 0);
+                    else if (turno.includes('tarde')) bt.setHours(14, 0, 0, 0);
+                    else if (turno.includes('noche')) bt.setHours(20, 0, 0, 0);
+                    else bt.setHours(12, 0, 0, 0);
+                    return (now - bt) / (1000 * 3600) >= 48;
+                }).length;
+
+                // 2. Conteo de Solicitudes Pendientes (Excluyendo 'Ninguno')
+                const solicitudesCount = recs.filter(r =>
+                    r?.solicitado === 'SÍ' &&
+                    r?.estado !== 'Informado' &&
+                    r?.estado !== 'Ninguno' &&
+                    r?.procedimiento_informe !== 'Ninguno'
+                ).length;
+
+                if (criticosCount > 0 || solicitudesCount > 0) {
+                    let alertHtml = `<div class="flex flex-col gap-1">
+                        <p class="font-bold">Dr/a. ${medico.split(' ').pop()}:</p>`;
+
+                    if (criticosCount > 0) {
+                        alertHtml += `<p>Tienes <span class="text-red-200">${criticosCount}</span> estudios <span class="underline">CRÍTICOS</span> con retraso. 
+                            <button onclick="setFilter('critico')" class="text-[9px] bg-white/20 px-1.5 py-0.5 rounded ml-1 hover:bg-white/40">Ver Críticos</button></p>`;
+                    }
+                    if (solicitudesCount > 0) {
+                        alertHtml += `<p>Tienes <span class="text-amber-200">${solicitudesCount}</span> solicitudes pendientes.
+                            <button onclick="switchTab('solicitudes')" class="text-[9px] bg-white/20 px-1.5 py-0.5 rounded ml-1 hover:bg-white/40">Ver Solicitudes</button></p>`;
+                    }
+
+                    alertHtml += `</div>`;
+                    showToast(alertHtml, criticosCount > 0 ? 'error' : 'warning', true);
+                    sessionStorage.setItem(sessionKey, 'true');
+                }
+            }
 
             // ── Filter ────────────────────────────────────────────────────────
             function setFilter(f) {
@@ -2319,29 +2496,35 @@
                     if (!tbody) return;
                     tbody.innerHTML = '';
 
-                    let arr = window.records.slice();
+                    let arr = (window.records || []).slice();
 
-                    // FIX L-02: use getElementById directly
                     const searchEl = document.getElementById('search');
                     if (searchEl && searchEl.value) {
                         const term = searchEl.value.toLowerCase();
                         arr = arr.filter(r =>
-                            (r.hc && r.hc.toLowerCase().includes(term)) ||
-                            (r.nombre && r.nombre.toLowerCase().includes(term)) ||
-                            (r.tipo && r.tipo.toLowerCase().includes(term))
+                            (r?.hc && r.hc.toLowerCase().includes(term)) ||
+                            (r?.nombre && r.nombre.toLowerCase().includes(term)) ||
+                            (r?.tipo && r.tipo.toLowerCase().includes(term))
                         );
                     }
 
                     const medEl = document.getElementById('filter-medico');
-                    if (medEl && medEl.value && medEl.value !== 'Todos los médicos' && medEl.value !== '') {
-                        arr = arr.filter(r => r.medico === medEl.value);
-                    }
+                    const medicoSeleccionado = medEl ? medEl.value : '';
+                    const recs = (medicoSeleccionado && medicoSeleccionado !== 'Todos los médicos')
+                        ? arr.filter(r => r?.medico === medicoSeleccionado)
+                        : arr;
+
+                    // Aplicamos el filtro de médico al array principal
+                    arr = recs;
 
                     const today = new Date(); today.setHours(0, 0, 0, 0);
                     arr = arr.filter(r => {
-                        const st = (r.estado || '').trim();
-                        if (st === 'Pendiente' || st === 'En Proceso' || st === '') return true;
-                        if (!r.fecha) return true;
+                        const st = (r?.estado || '').trim();
+                        // 1. Restauración en 'Todos': No excluir nada en la vista global
+                        if (activeFilter === 'all') return true;
+
+                        if (st === 'Pendiente' || st === 'En Proceso' || st === '' || st === 'Ninguno') return true;
+                        if (!r?.fecha) return true;
                         const rd = parseSafeDate(r.fecha);
                         if (currentDateFilter === 'hoy') return rd.getTime() === today.getTime();
                         if (currentDateFilter === 'semana') { const wa = new Date(today); wa.setDate(wa.getDate() - 7); return rd >= wa && rd <= today; }
@@ -2359,20 +2542,23 @@
                     const grCrit = [], grProc = [], grPend = [], grInfo = [], grNone = [];
 
                     arr.forEach(r => {
+                        if (!r) return;
                         const bt = parseSafeDate(r.fecha);
-                        const turno = (r.turno || '').toLowerCase();
+                        const turno = (r?.turno || '').toLowerCase();
                         if (turno.includes('mañana')) bt.setHours(8, 0, 0, 0);
                         else if (turno.includes('tarde')) bt.setHours(14, 0, 0, 0);
                         else if (turno.includes('noche')) bt.setHours(20, 0, 0, 0);
                         else bt.setHours(12, 0, 0, 0);
                         r._diffHrs = Math.max(0, (now - bt) / (1000 * 3600));
-                        const st = (r.estado || '').trim();
-                        const isCrit = (st === 'Pendiente' || st === '') && r._diffHrs >= 48;
-                        if (st === 'Informado') grInfo.push(r);
+                        const st = (r?.estado || '').trim();
+                        const isNinguno = st === 'Ninguno' || r?.procedimiento_informe === 'Ninguno';
+                        const isCrit = !isNinguno && (st === 'Pendiente' || st === '') && r?._diffHrs >= 48;
+
+                        if (isNinguno) grNone.push(r);
+                        else if (st === 'Informado') grInfo.push(r);
                         else if (st === 'En Proceso') grProc.push(r);
-                        else if (st === 'Ninguno') grNone.push(r);
                         else if (isCrit) grCrit.push(r);
-                        else grPend.push(r);
+                        else if (st === 'Pendiente' || st === '') grPend.push(r);
                     });
 
                     // State-based filter
@@ -2388,7 +2574,7 @@
 
                     function drawGroup(title, list, icon, isCritGroup) {
                         if (list.length === 0) return;
-                        const col = collapsedGroups[title] || false;
+                        const col = collapsedGroups[title] ?? true;
                         const rot = col ? '-rotate-90' : 'rotate-0';
                         const groupBorderColor = isCritGroup ? 'rgba(239,68,68,.15)' :
                             title.includes('Proceso') ? 'rgba(59,130,246,.12)' :
@@ -2411,8 +2597,9 @@
                         if (col) return;
 
                         list.forEach(r => {
-                            const st = (r.estado || '').trim();
-                            const isCrit = isCritGroup || (r._diffHrs >= 48 && (st === 'Pendiente' || st === ''));
+                            if (!r) return;
+                            const st = (r?.estado || '').trim();
+                            const isCrit = isCritGroup || ((r?._diffHrs || 0) >= 48 && (st === 'Pendiente' || st === ''));
 
                             // Row bg
                             const esClaro = !document.documentElement.classList.contains('dark');
@@ -2432,19 +2619,19 @@
                                             'background:rgba(100,116,139,.1);color:#94a3b8;border-color:rgba(100,116,139,.3);';
 
                             const select = `
-        <select onchange="updateEstado('${r._id}',this.value)" class="${sc}" style="${scStyle}min-width:142px;">
+        <select onchange="updateEstado('${r?._id}',this.value)" class="${sc}" style="${scStyle}min-width:142px;">
           <option value="Pendiente" ${(st === 'Pendiente' || st === '') ? 'selected' : ''}>${isCrit ? '⚠ CRÍTICO' : '◷ Pendiente'}</option>
           <option value="En Proceso" ${st === 'En Proceso' ? 'selected' : ''}>↻ En Proceso</option>
           <option value="Informado" ${st === 'Informado' ? 'selected' : ''}>✓ Informado</option>
           <option value="Ninguno" ${st === 'Ninguno' ? 'selected' : ''}>— Ninguno</option>
         </select>`;
 
-                            const c = (r.contraste === 'Sí' || r.contraste === 'Si')
+                            const c = (r?.contraste === 'Sí' || r?.contraste === 'Si')
                                 ? `<div class="mx-auto w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-black" style="font-size:8px;box-shadow:0 0 8px rgba(59,130,246,.4);">C+</div>`
                                 : `<span class="text-slate-700 text-xs">—</span>`;
 
-                            const fl = formatearFechaLimpia(r.fecha || '');
-                            const hasDiag = !!r.diagnostico;
+                            const fl = formatearFechaLimpia(r?.fecha || '');
+                            const hasDiag = !!r?.diagnostico;
                             const btnStyle = hasDiag
                                 ? 'background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.25);'
                                 : 'background:rgba(59,130,246,.1);color:#93c5fd;border:1px solid rgba(59,130,246,.2);';
@@ -2453,48 +2640,48 @@
                                 : `<svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
 
                             let tColor = 'color:#475569;'; let tText = '—';
-                            if (st !== 'Informado' && st !== 'Ninguno' && r._diffHrs !== undefined) {
+                            if (st !== 'Informado' && st !== 'Ninguno' && r?._diffHrs !== undefined) {
                                 tText = Math.floor(r._diffHrs) + 'h';
                                 tColor = r._diffHrs >= 48 ? 'color:#f87171;font-weight:800;' : r._diffHrs >= 24 ? 'color:#fcd34d;font-weight:600;' : '';
                             }
 
-                            const solicit = [r.solicitante, r.especialidad].filter(Boolean).join(' · ') || '—';
-                            const diagPreview = r.diagnostico
+                            const solicit = [r?.solicitante, r?.especialidad].filter(Boolean).join(' · ') || '—';
+                            const diagPreview = r?.diagnostico
                                 ? `<span style="font-size:9px;color:#6ee7b7;opacity:.7;">${r.diagnostico.slice(0, 40)}${r.diagnostico.length > 40 ? '…' : ''}</span>`
                                 : `<span style="font-size:9px;color:#334155;font-style:italic;">Sin informe</span>`;
 
                             tbody.innerHTML += `
         <tr class="border-b row-in dark:border-slate-700 dark:hover:bg-slate-800/50" style="${rowBg}border-color:rgba(22,32,53,.8);">
-          <td class="px-3 py-2 mono text-slate-500 dark:text-slate-400" style="font-size:10px;">${r._n || '—'}</td>
+          <td class="px-3 py-2 mono text-slate-500 dark:text-slate-400" style="font-size:10px;">${r?._n || '—'}</td>
           <td class="px-3 py-2 whitespace-nowrap" style="font-size:10px;">
             <span class="text-slate-800 font-medium dark:text-slate-200">${fl}</span>
-            <br><span class="text-slate-500 font-semibold dark:text-slate-400" style="font-size:9px;">${r.turno || ''}</span>
+            <br><span class="text-slate-500 font-semibold dark:text-slate-400" style="font-size:9px;">${r?.turno || ''}</span>
           </td>
           <td class="px-3 py-2 font-bold text-slate-800 dark:text-white" style="font-size:11px;min-width:160px;line-height:1.3;">
-            <span class="font-semibold">${r.nombre}</span>
+            <span class="font-semibold">${r?.nombre || '—'}</span>
             ${isCrit ? '<br><span class="badge-critical inline-block px-1.5 py-0.5 rounded text-white font-black" style="font-size:8px;background:#dc2626;letter-spacing:.06em;">⛔ RETRASADO</span>' : ''}
           </td>
-          <td class="px-3 py-2 mono font-bold dark:text-slate-200" style="font-size:10px;color:#60a5fa;">${r.hc}</td>
+          <td class="px-3 py-2 mono font-bold dark:text-slate-200" style="font-size:10px;color:#60a5fa;">${r?.hc || '—'}</td>
           <td class="px-3 py-2" style="font-size:10px;max-width:180px;">
             ${(() => {
-                                    const m = r.hoja || 'TOMOGRAFIA';
+                                    const m = r?.hoja || 'TOMOGRAFIA';
                                     const badgeCfg = { TOMOGRAFIA: { c: '#60a5fa', bg: 'rgba(59,130,246,.12)', label: 'TC' }, RADIOGRAFIA: { c: '#a78bfa', bg: 'rgba(139,92,246,.12)', label: 'RX' }, INTERVENCIONISMO: { c: '#fb923c', bg: 'rgba(249,115,22,.12)', label: 'INT' }, RESONANCIA: { c: '#34d399', bg: 'rgba(16,185,129,.12)', label: 'RM' } };
                                     const bc = badgeCfg[m] || badgeCfg.TOMOGRAFIA;
                                     return `<span class="inline-block px-1.5 py-0.5 rounded font-black mono mr-1" style="font-size:8px;color:${bc.c};background:${bc.bg};">${bc.label}</span>`;
                                 })()}
-            <span class="text-slate-800 font-medium dark:text-slate-200">${r.tipo}</span>
+            <span class="text-slate-800 font-medium dark:text-slate-200">${r?.tipo || '—'}</span>
           </td>
           <td class="px-3 py-2 text-center">${c}</td>
           <td class="px-3 py-2" style="font-size:9px;">
             <span class="inline-block px-1.5 py-0.5 rounded-full font-semibold text-slate-500 dark:text-slate-400"
-              style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);">${r.procedencia || '—'}</span>
+              style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);">${r?.procedencia || '—'}</span>
           </td>
-          <td class="px-3 py-2 text-slate-800 font-semibold dark:text-slate-200" style="font-size:10px;">${r.medico || '—'}</td>
+          <td class="px-3 py-2 text-slate-800 font-semibold dark:text-slate-200" style="font-size:10px;">${r?.medico || '—'}</td>
           <td class="px-3 py-2 text-slate-500 dark:text-slate-400" style="font-size:9px;max-width:140px;">${solicit}</td>
           <td class="px-2 py-2">${select}</td>
           <td class="px-3 py-2 text-center mono text-slate-500 dark:text-slate-400" style="font-size:11px;">${tText}</td>
           <td class="px-3 py-2 text-center" style="min-width:110px;">
-            <button onclick="openInformeModal('${r._id}')"
+            <button onclick="openInformeModal('${r?._id}')"
               class="inline-flex items-center gap-1 w-full py-1 rounded-lg font-bold transition-colors mb-1 dark:text-slate-300 dark:hover:text-white"
               style="${btnStyle}font-size:10px;justify-content:center;">
               ${btnIco} ${hasDiag ? 'Ver / Editar' : 'Cargar'}
@@ -2502,7 +2689,7 @@
             <div style="max-width:120px;margin:0 auto;">${diagPreview}</div>
           </td>
           <td class="px-3 py-2 text-center">
-            <button onclick="deleteRecord('${r._id}')"
+            <button onclick="deleteRecord('${r?._id}')"
               class="p-1 rounded-lg text-slate-700 hover:text-red-400 transition-colors dark:text-slate-400 dark:hover:text-red-400"
               style="hover:background:rgba(239,68,68,.1);">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -2519,6 +2706,7 @@
                         drawGroup('En Proceso — revisión activa', grProc, svgProc, false);
                         drawGroup('Pendientes del Día', grPend, svgPend, false);
                         drawGroup('Informados', grInfo, svgInfo, false);
+                        // 1. Restauración en la Pestaña "Todos" (mostrar 100% incluyendo 'Ninguno')
                         drawGroup('Ninguno', grNone, svgNone, false);
                     } else if (activeTab === 'Pendientes') {
                         drawGroup('En Proceso — revisión activa', grProc, svgProc, false);
@@ -2530,7 +2718,10 @@
                     }
 
                     const tc = document.getElementById('tab-count');
-                    if (tc) tc.textContent = window.records.length;
+                    if (tc) {
+                        // El conteo del tab muestra el total del médico seleccionado/total base (recs)
+                        tc.textContent = recs.length;
+                    }
 
                     updateStatCards();
                     renderSolicitudes();
@@ -2696,15 +2887,31 @@
             });
 
             // ── Toast ─────────────────────────────────────────────────────────
-            function showToast(msg, type = 'success') {
-                const cols = { success: 'linear-gradient(135deg,#047857,#10b981)', warning: 'linear-gradient(135deg,#b45309,#f59e0b)', error: 'linear-gradient(135deg,#b91c1c,#ef4444)' };
+            function showToast(msg, type = 'success', isHtml = false) {
+                const cols = {
+                    success: 'linear-gradient(135deg,#047857,#10b981)',
+                    warning: 'linear-gradient(135deg,#b45309,#f59e0b)',
+                    error: 'linear-gradient(135deg,#b91c1c,#ef4444)'
+                };
                 const c = document.getElementById('toastContainer');
+                if (!c) return;
                 const t = document.createElement('div');
-                t.className = 'toast px-5 py-3 rounded-xl text-white text-sm font-semibold shadow-2xl';
-                t.style.cssText = `background:${cols[type] || cols.success};max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,.4);`;
-                t.textContent = msg;
+                t.className = 'toast px-5 py-3 rounded-xl text-white text-sm font-semibold shadow-2xl flex items-center justify-between gap-4';
+                t.style.cssText = `background:${cols[type] || cols.success};max-width:360px;box-shadow:0 12px 32px rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);`;
+
+                if (isHtml) {
+                    t.innerHTML = `<div>${msg}</div><button onclick="this.parentElement.remove()" class="opacity-50 hover:opacity-100 text-xs font-black">✕</button>`;
+                } else {
+                    t.textContent = msg;
+                }
+
                 c.appendChild(t);
-                setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 300); }, 3200);
+                setTimeout(() => {
+                    if (t.parentElement) {
+                        t.classList.add('hide');
+                        setTimeout(() => t.remove(), 300);
+                    }
+                }, 6000); // Más tiempo para leer alertas complejas
             }
 
             // ── Initialize ────────────────────────────────────────────────────
