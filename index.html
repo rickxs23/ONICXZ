@@ -159,6 +159,63 @@
             background: #fff;
         }
 
+        /* ══ LIGHT MODE COLOR FIXES ══════════════════════════════════════ */
+        html.light body {
+            color: #1e293b;
+        }
+
+        html.light .text-white {
+            color: #475569 !important;
+            /* text-slate-600 */
+        }
+
+        html.light .text-slate-200 {
+            color: #334155 !important;
+        }
+
+        html.light .text-slate-400 {
+            color: #475569 !important;
+        }
+
+        html.light .text-slate-500 {
+            color: #64748b !important;
+        }
+
+        html.light .text-slate-600 {
+            color: #475569 !important;
+        }
+
+        /* Badge C+ fix */
+        html.light .badge-cplus {
+            background: #3b82f6 !important;
+            color: #ffffff !important;
+        }
+
+        /* Preserve white text for primary buttons in light mode */
+        html.light .btn-primary .text-white,
+        html.light .btn-success .text-white,
+        html.light #btn-submit,
+        html.light .btn-primary,
+        html.light .bg-blue-600.text-white,
+        html.light .badge-cplus,
+        html.light #logo-svg {
+            color: #ffffff !important;
+        }
+
+        /* Excel/PDF labels fix */
+        html.light .btn-excel,
+        html.light .btn-pdf,
+        .btn-excel,
+        .btn-pdf {
+            color: #ffffff !important;
+        }
+
+        /* Excel/PDF icons fix in Light mode */
+        html.light .btn-excel svg,
+        html.light .btn-pdf svg {
+            color: #ffffff !important;
+        }
+
         .field:focus {
             outline: none;
             border-color: #3b82f6;
@@ -704,7 +761,7 @@
                         </button>
 
                         <!-- Dropdown menu -->
-                        <div id="logo-menu" class="hidden absolute top-12 left-0 z-[100]"
+                        <div id="logo-menu" class="hidden absolute top-12 left-0 z-[9999]"
                             style="width:230px;background:linear-gradient(135deg,#080f1e,#0c1529);border:1px solid rgba(59,130,246,.22);border-radius:14px;box-shadow:0 24px 48px rgba(0,0,0,.7),0 0 40px rgba(59,130,246,.08);">
 
                             <div class="px-4 py-2.5 border-b" style="border-color:rgba(59,130,246,.1);">
@@ -1085,7 +1142,7 @@
                     </div>
 
                     <!-- Dynamic Studies Container -->
-                    <div id="extra-studies-container" class="space-y-4"></div>
+                    <div id="extra-studies-container" class="mt-2 flex flex-col gap-2"></div>
 
                     <!-- ROW 4: Contraste + Motivo -->
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1309,7 +1366,7 @@
                     <!-- Export buttons (kept in dashboard per request) -->
                     <div class="flex gap-2 flex-shrink-0">
                         <button onclick="exportToExcel()"
-                            class="flex items-center gap-2 px-5 py-2.5 bg-[#107c41] hover:bg-[#0c5e31] text-white text-sm font-medium rounded-md shadow-sm transition-colors">
+                            class="btn-excel flex items-center gap-2 px-5 py-2.5 bg-[#107c41] hover:bg-[#0c5e31] text-white text-sm font-medium rounded-md shadow-sm transition-colors">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                                 <polyline points="14 2 14 8 20 8" />
@@ -1317,7 +1374,7 @@
                             Excel
                         </button>
                         <button onclick="exportarPendientesPDF()"
-                            class="btn-slate flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-all"
+                            class="btn-pdf btn-slate flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-all"
                             style="border:1px solid rgba(100,116,139,.3);">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"
                                 viewBox="0 0 24 24">
@@ -1391,7 +1448,7 @@
                         </div>
                         <div class="flex gap-2">
                             <button onclick="exportarPendientesPDF()"
-                                class="btn-slate h-10 px-4 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all"
+                                class="btn-pdf btn-slate h-10 px-4 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all"
                                 style="border:1px solid rgba(100,116,139,.3);">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path
@@ -1912,7 +1969,6 @@
             async function handleSubmit(e) {
                 if (e) e.preventDefault();
 
-                // VALIDACIÓN COMPLETA DE CAMPOS OBLIGATORIOS (Paciente y primer estudio)
                 const camposRequeridos = [
                     { id: 'f_fecha', label: 'Fecha del Estudio' },
                     { id: 'f_turno', label: 'Turno' },
@@ -1957,26 +2013,24 @@
                     const solFull = solAp && solNom ? `${solAp}, ${solNom}` : (solAp || solNom);
                     const espSol = document.getElementById('f_especialidad').value.trim().toUpperCase();
 
+                    // Datos GLOBALES del evento de registro
+                    const medicoGlobal = document.getElementById('f_medico').value;
+                    const estadoGlobal = document.getElementById('f_estado').value;
+                    const registroId = 'reg_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
                     let motivoBase = document.getElementById('f_motivo').value.trim().toUpperCase();
                     for (const [k, v] of Object.entries(ABREV)) motivoBase = motivoBase.replace(new RegExp(k, 'g'), v);
 
-                    // Recolectar bloques de estudios
                     const blocks = [];
-                    // Bloque principal
                     blocks.push({
                         tipoRaw: document.getElementById('f_tipo').value.trim().toUpperCase(),
-                        activeMod: document.getElementById('mod-select')?.value || 'TC',
-                        medico: document.getElementById('f_medico').value,
-                        estado: document.getElementById('f_estado').value
+                        activeMod: document.getElementById('mod-select')?.value || 'TC'
                     });
-                    // Bloques extra
                     document.querySelectorAll('.extra-study-row').forEach(row => {
                         const id = row.dataset.id;
                         blocks.push({
                             tipoRaw: document.getElementById(`f_tipo_${id}`).value.trim().toUpperCase(),
-                            activeMod: document.getElementById(`mod_select_${id}`).value,
-                            medico: document.getElementById(`f_medico_${id}`).value,
-                            estado: document.getElementById(`f_estado_${id}`).value
+                            activeMod: document.getElementById(`mod_select_${id}`).value
                         });
                     });
 
@@ -1996,7 +2050,7 @@
                             }
                         }
 
-                        let finalMed = b.medico;
+                        let finalMed = medicoGlobal;
                         if (tipoFinal.includes('CORONARIAS') || tipoFinal.includes('SCORE DE CALCIO')) finalMed = 'Dra. Melvi Flores';
 
                         const hoja = b.activeMod === 'RX' ? 'RADIOGRAFIA' : b.activeMod === 'INT' ? 'INTERVENCIONISMO' : b.activeMod === 'RM' ? 'RESONANCIA' : 'TOMOGRAFIA';
@@ -2004,21 +2058,14 @@
                         window.rowCounter++;
                         const rec = {
                             _id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-                            _n: window.rowCounter,
-                            _ts: ts,
+                            _n: window.rowCounter, _ts: ts,
+                            registro_id: registroId, // ID único para agrupar por evento
                             hoja, fecha, turno,
-                            medico: finalMed,
-                            estado: b.estado,
+                            medico: finalMed, estado: estadoGlobal,
                             hc, nombre: `${aps} ${noms}`.trim(),
-                            procedencia: proc,
-                            tipo: tipoFinal,
-                            contraste: contrasteOn ? 'Sí' : 'No',
-                            solicitante: solFull,
-                            especialidad: espSol,
-                            motivo: motivoBase,
-                            diagnostico: '',
-                            solicitado: 'NO',
-                            origen_solicitud: ''
+                            procedencia: proc, tipo: tipoFinal, contraste: contrasteOn ? 'Sí' : 'No',
+                            solicitante: solFull, especialidad: espSol, motivo: motivoBase,
+                            diagnostico: '', solicitado: 'NO', origen_solicitud: ''
                         };
 
                         const ref = await window.fbAddDoc(window.fbCol(window.db, 'pacientes'), rec);
@@ -2031,7 +2078,6 @@
                     const swMultiples = document.getElementById('switch-multiples');
                     if (swMultiples && swMultiples.checked) {
                         resetSoloEstudio();
-                        // Limpiar filas extra si existen
                         document.getElementById('extra-studies-container').innerHTML = '';
                     } else {
                         resetFormCustom();
@@ -2051,34 +2097,22 @@
                 const container = document.getElementById('extra-studies-container');
                 const id = Date.now().toString(36);
                 const div = document.createElement('div');
-                div.className = 'extra-study-row grad-card p-4 space-y-4 mb-4';
+                div.className = 'extra-study-row grid grid-cols-1 md:grid-cols-4 gap-4';
                 div.dataset.id = id;
                 div.innerHTML = `
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-[10px] font-bold text-blue-400 mono tracking-widest uppercase">Estudio Adicional</span>
-                        <button type="button" onclick="this.closest('.extra-study-row').remove()" class="text-red-400 hover:text-red-300 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div class="md:col-span-2 flex flex-col gap-1.5">
-                            <label class="section-label">Modalidad y Estudio *</label>
-                            <div class="flex rounded-xl overflow-hidden" style="border:1.5px solid #162035;">
-                                <select id="mod_select_${id}" class="px-3 py-2 font-bold text-xs cursor-pointer bg-[#111e35] text-blue-300 border-r border-blue-900/50">
-                                    <option value="TC">TC</option><option value="RX">RX</option><option value="INT">INT</option><option value="RM">RM</option>
-                                </select>
-                                <input type="text" id="f_tipo_${id}" list="lista-estudios" placeholder="EJ: TC TORAX..." class="flex-1 px-3 py-2 text-xs font-semibold uppercase bg-transparent outline-none text-slate-200" required />
-                            </div>
-                        </div>
-                        <div class="flex flex-col gap-1.5">
-                            <label class="section-label">Estado Inicial</label>
-                            <select id="f_estado_${id}" class="field font-semibold">
-                                <option value="Pendiente" selected>Pendiente</option><option value="En Proceso">En Proceso</option><option value="Informado">Informado</option><option value="Ninguno">Ninguno</option>
+                    <div class="md:col-span-2 flex flex-col gap-1.5">
+                        <div class="flex rounded-xl overflow-hidden" style="border:1.5px solid #162035; background:transparent;">
+                            <select id="mod_select_${id}" 
+                                class="px-3 py-2 font-bold text-xs cursor-pointer transition-colors border-r"
+                                style="background:#0c1529;color:#93c5fd;border-color:#1e3a5f;flex-shrink:0;">
+                                <option value="TC">TC</option><option value="RX">RX</option><option value="INT">INT</option><option value="RM">RM</option>
                             </select>
-                        </div>
-                        <div class="flex flex-col gap-1.5">
-                            <label class="section-label">Médico Informante</label>
-                            <input type="text" id="f_medico_${id}" list="medicos-list" class="field uppercase" placeholder="Seleccione..." />
+                            <input type="text" id="f_tipo_${id}" list="lista-estudios" placeholder="ESTUDIO ADICIONAL..."
+                                class="flex-1 px-3 py-2 text-xs font-semibold uppercase bg-transparent outline-none text-slate-100 placeholder:text-slate-600" required />
+                            <button type="button" onclick="this.closest('.extra-study-row').remove()" 
+                                class="px-3 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all border-l border-red-900/20 flex items-center justify-center" title="Eliminar Estudio">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
                         </div>
                     </div>
                 `;
@@ -2980,72 +3014,26 @@
       </tr>`;
                         if (col) return;
 
-                        // AGRUPACIÓN POR PACIENTE (HC)
-                        const patients = list.reduce((acc, r) => {
-                            if (!acc[r.hc]) acc[r.hc] = { name: r.nombre, records: [] };
-                            acc[r.hc].records.push(r);
+                        // AGRUPACIÓN POR EVENTO DE REGISTRO
+                        const registryEvents = list.reduce((acc, r) => {
+                            const key = r.registro_id || (r.hc + '_' + r.fecha);
+                            if (!acc[key]) acc[key] = { name: r.nombre, fecha: r.fecha, turno: r.turno, hc: r.hc, records: [] };
+                            acc[key].records.push(r);
                             return acc;
                         }, {});
 
-                        Object.keys(patients).forEach(hc => {
-                            const p = patients[hc];
-                            const pId = 'patient-' + hc.replace(/\s+/g, '-');
-                            const pCollapsed = collapsedGroups[pId] ?? false;
-                            const pRot = pCollapsed ? '-rotate-90' : 'rotate-0';
+                        Object.keys(registryEvents).forEach(key => {
+                            const ev = registryEvents[key];
+                            const recs = ev.records;
+                            const isMulti = recs.length > 1;
 
-                            // Cabecera del Cajón del Paciente
-                            tbody.innerHTML += `
-        <tr onclick="toggleGroup('${pId}')" class="cursor-pointer bg-slate-900/30 hover:bg-slate-900/50 transition-colors border-b border-slate-800/50">
-          <td colspan="13" class="py-2 px-6">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-4">
-                <svg class="w-2.5 h-2.5 text-blue-500 transition-transform ${pRot}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"/>
-                </svg>
-                <div class="flex flex-col">
-                    <span class="text-[11px] font-bold text-white tracking-tight">${p.name}</span>
-                    <span class="mono text-[9px] text-blue-400 font-bold">${hc}</span>
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="text-[9px] font-black px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                    ${p.records.length} ESTUDIO${p.records.length > 1 ? 'S' : ''}
-                </span>
-              </div>
-            </div>
-          </td>
-        </tr>`;
-
-                            if (pCollapsed) return;
-
-                            // Estudios del Paciente
-                            p.records.forEach(r => {
+                            recs.forEach((r, idx) => {
                                 const st = (r?.estado || '').trim();
                                 const isCrit = isCritGroup || ((r?._diffHrs || 0) >= 48 && (st === 'Pendiente' || st === ''));
-
                                 const esClaro = !document.documentElement.classList.contains('dark');
-                                let rowBg = esClaro ? 'background:#ffffff;' : 'background:rgba(8,15,30,.3);';
+
+                                let rowBg = esClaro ? 'background:#ffffff;' : 'background:transparent;';
                                 if (isCrit) rowBg = esClaro ? 'background:#fef2f2;' : 'background:rgba(239,68,68,.04);';
-
-                                let sc = "status-select font-bold rounded-lg border py-1 pl-2 pr-1 cursor-pointer outline-none transition-all text-[10.5px] ";
-                                if (isCrit) sc += "animate-pulse";
-                                const scStyle = isCrit ? 'background:rgba(239,68,68,.15);color:#fca5a5;border-color:rgba(239,68,68,.4);' :
-                                    st === 'En Proceso' ? 'background:rgba(59,130,246,.12);color:#93c5fd;border-color:rgba(59,130,246,.35);' :
-                                        st === 'Informado' ? 'background:rgba(16,185,129,.1);color:#6ee7b7;border-color:rgba(16,185,129,.3);' :
-                                            st === 'Pendiente' ? 'background:rgba(245,158,11,.1);color:#fcd34d;border-color:rgba(245,158,11,.3);' :
-                                                'background:rgba(100,116,139,.1);color:#94a3b8;border-color:rgba(100,116,139,.3);';
-
-                                const select = `
-            <select onchange="updateEstado('${r?._id}',this.value)" class="${sc}" style="${scStyle}min-width:142px;">
-              <option value="Pendiente" ${(st === 'Pendiente' || st === '') ? 'selected' : ''}>${isCrit ? '⚠ CRÍTICO' : '◷ Pendiente'}</option>
-              <option value="En Proceso" ${st === 'En Proceso' ? 'selected' : ''}>↻ En Proceso</option>
-              <option value="Informado" ${st === 'Informado' ? 'selected' : ''}>✓ Informado</option>
-              <option value="Ninguno" ${st === 'Ninguno' ? 'selected' : ''}>— Ninguno</option>
-            </select>`;
-
-                                const c = (r?.contraste === 'Sí' || r?.contraste === 'Si')
-                                    ? `<div class="mx-auto w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center font-black" style="font-size:7px;">C+</div>`
-                                    : `<span class="text-slate-700 text-xs">—</span>`;
 
                                 const fl = formatearFechaLimpia(r?.fecha || '');
                                 const hasDiag = !!r?.diagnostico;
@@ -3066,49 +3054,104 @@
                                     ? `<span style="font-size:9px;color:#6ee7b7;opacity:.7;">${r.diagnostico.slice(0, 30)}${r.diagnostico.length > 30 ? '…' : ''}</span>`
                                     : `<span style="font-size:9px;color:#334155;font-style:italic;">Sin informe</span>`;
 
-                                tbody.innerHTML += `
-            <tr class="border-b dark:border-slate-800/50 hover:bg-white/5 transition-colors" style="${rowBg}border-color:rgba(22,32,53,.4);">
-              <td class="px-3 py-1.5 mono text-slate-500" style="font-size:9px;">${r?._n || '—'}</td>
-              <td class="px-3 py-1.5 whitespace-nowrap" style="font-size:9px;">
-                <span class="text-slate-400 font-medium">${fl}</span>
-                <span class="text-slate-600 font-bold ml-1" style="font-size:8px;">${r?.turno || ''}</span>
-              </td>
-              <td class="px-8 py-1.5" colspan="2">
-                <div class="flex items-center gap-2">
-                    ${(() => {
+                                let sc = "status-select font-bold rounded-lg border py-1 pl-2 pr-1 cursor-pointer outline-none transition-all text-[10.5px] ";
+                                if (isCrit) sc += "animate-pulse";
+                                const scStyle = isCrit ? 'background:rgba(239,68,68,.15);color:#fca5a5;border-color:rgba(239,68,68,.4);' :
+                                    st === 'En Proceso' ? 'background:rgba(59,130,246,.12);color:#93c5fd;border-color:rgba(59,130,246,.35);' :
+                                        st === 'Informado' ? 'background:rgba(16,185,129,.1);color:#6ee7b7;border-color:rgba(16,185,129,.3);' :
+                                            st === 'Pendiente' ? 'background:rgba(245,158,11,.1);color:#fcd34d;border-color:rgba(245,158,11,.3);' :
+                                                'background:rgba(100,116,139,.1);color:#94a3b8;border-color:rgba(100,116,139,.3);';
+
+                                const select = `
+                                    <select onchange="updateEstado('${r?._id}',this.value)" class="${sc}" style="${scStyle}min-width:142px;">
+                                      <option value="Pendiente" ${(st === 'Pendiente' || st === '') ? 'selected' : ''}>${isCrit ? '⚠ CRÍTICO' : '◷ Pendiente'}</option>
+                                      <option value="En Proceso" ${st === 'En Proceso' ? 'selected' : ''}>↻ En Proceso</option>
+                                      <option value="Informado" ${st === 'Informado' ? 'selected' : ''}>✓ Informado</option>
+                                      <option value="Ninguno" ${st === 'Ninguno' ? 'selected' : ''}>— Ninguno</option>
+                                    </select>`;
+
+                                const c = (r?.contraste === 'Sí' || r?.contraste === 'Si')
+                                    ? `<div class="badge-cplus mx-auto w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center font-black" style="font-size:7px;">C+</div>`
+                                    : `<span class="text-slate-500 text-xs">—</span>`;
+
+                                const badgeEstudios = isMulti && idx === 0
+                                    ? `<div class="mt-1 px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[9px] font-black w-max border border-blue-500/20">${recs.length} ESTUDIOS</div>`
+                                    : '';
+
+                                // Renderizar fila
+                                const borderColor = esClaro ? 'rgba(203,213,225,0.8)' : 'rgba(51,65,85,0.8)'; // border-slate-300 vs border-slate-700
+                                let trHtml = `<tr class="group border-b transition-colors" style="${rowBg} border-color:${borderColor};">`;
+
+                                // Bloque Izquierdo (Estático / Rowspan)
+                                if (idx === 0) {
+                                    const rs = isMulti ? `rowspan="${recs.length}"` : '';
+                                    const t = (r?.turno || '').toLowerCase();
+
+                                    let tStyle = '';
+                                    if (t.includes('mañana')) {
+                                        tStyle = esClaro ? 'background:#fef3c7;color:#92400e;' : 'background:rgba(245,158,11,0.2);color:#fbbf24;';
+                                    } else if (t.includes('tarde')) {
+                                        tStyle = esClaro ? 'background:#ffedd5;color:#9a3412;' : 'background:rgba(249,115,22,0.2);color:#fb923c;';
+                                    } else if (t.includes('noche')) {
+                                        tStyle = esClaro ? 'background:#e0e7ff;color:#3730a3;' : 'background:rgba(79,70,229,0.2);color:#818cf8;';
+                                    } else {
+                                        tStyle = 'background:rgba(100,116,139,0.1);color:#64748b;';
+                                    }
+
+                                    trHtml += `
+                                        <td ${rs} class="px-3 py-3 mono text-slate-500" style="font-size:9px;">${r?._n || '—'}</td>
+                                        <td ${rs} class="px-3 py-3 whitespace-nowrap" style="font-size:9px;">
+                                            <span class="text-slate-400 font-medium">${fl}</span><br/>
+                                            <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tight" style="${tStyle}">${r?.turno || ''}</span>
+                                        </td>
+                                        <td ${rs} class="px-3 py-3">
+                                            <span class="text-slate-900 dark:text-white font-bold text-[11px] block tracking-tight">${ev.name}</span>
+                                            ${badgeEstudios}
+                                        </td>
+                                        <td ${rs} class="px-3 py-3 mono text-blue-400 dark:text-blue-400/60 font-bold" style="font-size:9px;">${ev.hc}</td>
+                                    `;
+                                }
+
+                                // Bloque Derecho (Dinámico)
+                                trHtml += `
+                                    <td class="px-4 py-2.5">
+                                        <div class="flex items-center gap-2">
+                                            ${(() => {
                                         const m = r?.hoja || 'TOMOGRAFIA';
                                         const badgeCfg = { TOMOGRAFIA: { c: '#60a5fa', bg: 'rgba(59,130,246,.12)', label: 'TC' }, RADIOGRAFIA: { c: '#a78bfa', bg: 'rgba(139,92,246,.12)', label: 'RX' }, INTERVENCIONISMO: { c: '#fb923c', bg: 'rgba(249,115,22,.12)', label: 'INT' }, RESONANCIA: { c: '#34d399', bg: 'rgba(16,185,129,.12)', label: 'RM' } };
                                         const bc = badgeCfg[m] || badgeCfg.TOMOGRAFIA;
                                         return `<span class="inline-block px-1 py-0.5 rounded font-black mono text-[8px]" style="color:${bc.c};background:${bc.bg};">${bc.label}</span>`;
                                     })()}
-                    <span class="text-slate-200 font-bold text-[10px] tracking-tight">${r?.tipo || '—'}</span>
-                    ${isCrit ? '<span class="text-red-500 font-black text-[8px] ml-1">⚠ RETRASO</span>' : ''}
-                </div>
-              </td>
-              <td class="px-3 py-1.5 text-center">${c}</td>
-              <td class="px-3 py-1.5" style="font-size:9px;">
-                <span class="text-slate-500 uppercase font-bold" style="font-size:8px;">${r?.procedencia || '—'}</span>
-              </td>
-              <td class="px-3 py-1.5 text-slate-400 font-semibold" style="font-size:9px;">${r?.medico || '—'}</td>
-              <td class="px-3 py-1.5 text-slate-500" style="font-size:9px;max-width:140px;">${solicit}</td>
-              <td class="px-2 py-1.5">${select}</td>
-              <td class="px-3 py-1.5 text-center mono text-slate-500" style="font-size:10px;">${tText}</td>
-              <td class="px-3 py-1.5 text-center" style="min-width:110px;">
-                <div class="flex items-center justify-center gap-2">
-                    <button onclick="openInformeModal('${r?._id}')"
-                        class="flex items-center gap-1 px-2 py-1 rounded-md font-bold transition-all text-white"
-                        style="${btnStyle}font-size:9px;">
-                        ${btnIco} ${hasDiag ? 'Ver' : 'Cargar'}
-                    </button>
-                    <div class="hidden sm:block truncate">${diagPreview}</div>
-                </div>
-              </td>
-              <td class="px-3 py-1.5 text-center">
-                <button onclick="deleteRecord('${r?._id}')" class="p-1 text-slate-600 hover:text-red-400">
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                </button>
-              </td>
-            </tr>`;
+                                            <span class="text-slate-200 font-bold text-[10px] tracking-tight">${r?.tipo || '—'}</span>
+                                            ${isCrit ? '<span class="text-red-500 font-black text-[8px] ml-1">⚠ RETRASO</span>' : ''}
+                                        </div>
+                                    </td>
+                                    <td class="px-3 py-2.5 text-center">${c}</td>
+                                    <td class="px-3 py-2.5">
+                                        <span class="text-slate-500 uppercase font-bold" style="font-size:8px;">${r?.procedencia || '—'}</span>
+                                    </td>
+                                    <td class="px-3 py-2.5 text-slate-400 font-semibold" style="font-size:9px;">${r?.medico || '—'}</td>
+                                    <td class="px-3 py-2.5 text-slate-500" style="font-size:9px;max-width:140px;">${solicit}</td>
+                                    <td class="px-2 py-2.5">${select}</td>
+                                    <td class="px-3 py-2.5 text-center mono text-slate-500" style="font-size:10px;">${tText}</td>
+                                    <td class="px-3 py-2.5 text-center" style="min-width:110px;">
+                                        <div class="flex flex-col items-center justify-center gap-1">
+                                            <button onclick="openInformeModal('${r?._id}')"
+                                                class="flex items-center gap-1 px-2 py-1 rounded-md font-bold transition-all"
+                                                style="${btnStyle}font-size:9px;color:${hasDiag ? '#6ee7b7' : '#38bdf8'};">
+                                                ${btnIco} ${hasDiag ? 'Ver' : 'CARGAR'}
+                                            </button>
+                                            <div class="hidden sm:block truncate text-center">${diagPreview}</div>
+                                        </div>
+                                    </td>
+                                    <td class="px-3 py-2.5 text-center">
+                                        <button onclick="deleteRecord('${r?._id}')" class="p-1 text-slate-600 hover:text-red-400">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        </button>
+                                    </td>
+                                </tr>`;
+
+                                tbody.innerHTML += trHtml;
                             });
                         });
                     }
