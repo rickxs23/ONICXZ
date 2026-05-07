@@ -707,18 +707,18 @@
                 </div>
                 <p class="mono text-blue-400 font-semibold tracking-[.2em] text-[10px] mb-2">HOSPITAL ARCO IRIS</p>
                 <h2 class="text-2xl font-bold text-white tracking-tight">Acceso al Sistema</h2>
-                <p class="text-slate-500 text-xs mt-1">Servicio de Diagnóstico por Imágenes</p>
+                <p class="text-slate-200 text-xs mt-1">Servicio de Diagnóstico por Imágenes</p>
             </div>
 
             <div class="space-y-4">
                 <div>
-                    <label class="section-label block mb-1.5">Usuario</label>
+                    <label class="section-label block mb-1.5 text-slate-200">Usuario</label>
                     <input type="text" id="login-user" placeholder="Ej: ADMIN" class="field uppercase"
                         style="letter-spacing:.08em;"
                         onkeypress="if(event.key==='Enter') document.getElementById('login-pass').focus()">
                 </div>
                 <div>
-                    <label class="section-label block mb-1.5">Contraseña</label>
+                    <label class="section-label block mb-1.5 text-slate-200">Contraseña</label>
                     <input type="password" id="login-pass" placeholder="••••••••" class="field"
                         onkeypress="if(event.key==='Enter') verificarLogin()">
                 </div>
@@ -733,7 +733,7 @@
                 </button>
             </div>
 
-            <p class="text-center text-slate-600 text-[10px] mt-6 mono">HAI · CDI v3.0 · Firebase RT</p>
+            <p class="text-center text-slate-200 text-[10px] mt-6 mono">HAI · CDI v3.0 · Firebase RT</p>
         </div>
     </div>
 
@@ -741,7 +741,8 @@
     <div id="main-app" class="hidden">
 
         <!-- ╔══════════════════════════════════ HEADER ════════════════╗ -->
-        <header id="main-header" class="sticky top-0 z-50 shadow-2xl transition-all duration-300">
+        <header id="main-header" class="sticky top-0 z-50 shadow-2xl transition-all duration-300"
+            style="background: #0a1128;">
             <div id="header-container"
                 class="px-6 py-4 flex flex-col lg:flex-row items-center justify-between gap-3 max-w-screen-2xl mx-auto transition-all duration-300">
 
@@ -872,23 +873,25 @@
 
                 <!-- CENTER: Title -->
                 <div class="text-center w-full lg:w-1/3 order-1 lg:order-2">
-                    <p id="header-subtitle" class="mono text-slate-500 tracking-[.14em] hidden sm:block"
-                        style="font-size:9px;">SERVICIO DE DIAGNÓSTICO POR IMÁGENES</p>
-                    <h1 id="header-title" class="font-bold text-white tracking-tight mt-0.5 text-lg">Registro de
-                        Estudios</h1>
+                    <p id="header-subtitle-top" class="mono tracking-[.14em] hidden sm:block text-white font-black"
+                        style="font-size:8px; opacity: 0.9;">SERVICIO DE DIAGNÓSTICO POR IMÁGENES</p>
+                    <h1 id="header-title" class="font-bold tracking-[.18em] mt-0.5 text-lg uppercase"
+                        style="color:#FFFFFF;">REGISTRO DE ESTUDIOS</h1>
                 </div>
 
                 <!-- RIGHT: Clock + Controls -->
                 <div class="flex items-center justify-center lg:justify-end w-full lg:w-1/3 order-3 gap-3">
                     <div class="text-right">
-                        <p id="clock" class="mono font-bold text-slate-200"
-                            style="font-size:17px;letter-spacing:.04em;"></p>
-                        <p id="clock-date" class="mono text-slate-500 font-medium" style="font-size:9px;"></p>
+                        <p id="clock" class="mono font-bold text-slate-100"
+                            style="font-size:17px;letter-spacing:.04em;">
+                        </p>
+                        <p id="clock-date" class="mono font-medium" style="font-size:9px; color:#D3D3D3;">
+                        </p>
                     </div>
 
                     <!-- Pill controls -->
                     <div class="flex items-center rounded-full px-1 py-0.5 gap-0.5"
-                        style="background:rgba(8,15,30,.7);border:1px solid var(--border);">
+                        style="background:rgba(8,15,30,.7);border:1.5px solid rgba(59,130,246,0.3);">
                         <button onclick="toggleDarkMode()"
                             class="p-1.5 rounded-full hover:bg-blue-500/10 transition text-slate-400 hover:text-blue-400">
                             <svg id="icon-sun" class="w-3.5 h-3.5 hidden text-amber-400" fill="none"
@@ -921,22 +924,22 @@
                 style="border-color:rgba(59,130,246,.1);padding-top:4px;">
                 <div class="flex gap-1">
                     <button id="tab-form" onclick="switchTab('form')"
-                        class="px-5 py-2 text-sm font-semibold rounded-t-lg transition-all"
-                        style="background:rgba(59,130,246,.18);color:#93c5fd;border:1px solid rgba(59,130,246,.2);border-bottom:none;">
+                        class="px-5 py-2 text-sm font-bold rounded-t-lg transition-all"
+                        style="background:rgba(59,130,246,.1);color:#ffffff;border-bottom:2px solid #3b82f6;">
                         + Nuevo Registro
                     </button>
                     <button id="tab-dashboard" onclick="switchTab('dashboard')"
-                        class="px-5 py-2 text-sm font-medium rounded-t-lg text-slate-500 hover:text-slate-300 transition-all">
+                        class="px-5 py-2 text-sm font-bold rounded-t-lg text-slate-400 hover:text-white transition-all">
                         Dashboard
                         <span id="tab-count" class="mono font-bold rounded-full px-1.5 py-0.5 ml-1 text-xs"
-                            style="background:rgba(59,130,246,.25);color:#93c5fd;">0</span>
+                            style="background:rgba(255,255,255,.08);color:#94a3b8;">0</span>
                     </button>
                     <button id="tab-solicitudes" onclick="switchTab('solicitudes')"
-                        class="px-5 py-2 text-sm font-medium rounded-t-lg text-slate-500 hover:text-slate-300 transition-all">
+                        class="px-5 py-2 text-sm font-bold rounded-t-lg text-slate-400 hover:text-white transition-all">
                         Solicitudes
                         <span id="sol-count"
                             class="mono font-bold rounded-full px-1.5 py-0.5 ml-1 text-xs animate-pulse"
-                            style="background:rgba(239,68,68,.2);color:#fca5a5;">0</span>
+                            style="background:rgba(239,68,68,.15);color:#fca5a5;">0</span>
                     </button>
                 </div>
 
@@ -972,7 +975,7 @@
                             </div>
                             <!-- SWITCH: Múltiples Estudios -->
                             <div class="flex items-center gap-2.5">
-                                <span class="text-slate-400 text-xs font-semibold">Múltiples Estudios</span>
+                                <span class="text-slate-100 text-xs font-semibold">Múltiples Estudios</span>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" id="switch-multiples" class="sr-only peer">
                                     <div
@@ -982,11 +985,11 @@
                                         class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow-md peer-checked:translate-x-4 transition-all">
                                     </div>
                                 </label>
-                                <span id="multiples-text" class="text-xs font-bold text-slate-500">Off</span>
+                                <span id="multiples-text" class="text-xs font-bold text-slate-100">Off</span>
                             </div>
                         </div>
-                        <p class="text-slate-400 text-xs ml-3.5">Mayúsculas automáticas · Contraste en prefijo · <span
-                                class="text-blue-400">Enter en Motivo = Ctrl+Enter para guardar</span></p>
+                        <p class="text-slate-100 text-xs ml-3.5">Mayúsculas automáticas · Contraste en
+                            prefijo · <span class="text-blue-400">Enter en Motivo = Ctrl+Enter para guardar</span></p>
                     </div>
                 </div>
 
@@ -1932,10 +1935,26 @@
                     document.getElementById(t + '-panel').classList.toggle('hidden', t !== tab);
                     const btn = document.getElementById('tab-' + t);
                     if (t === tab) {
-                        btn.style.cssText = 'background:rgba(59,130,246,.18);color:#93c5fd;border:1px solid rgba(59,130,246,.2);border-bottom:none;';
+                        btn.style.cssText = 'background:rgba(59,130,246,.1);color:#ffffff;border-bottom:2px solid #3b82f6;';
+                        btn.className = 'px-5 py-2 text-sm font-bold rounded-t-lg transition-all';
+                        const cnt = btn.querySelector('span');
+                        if (cnt) {
+                            cnt.style.background = 'rgba(255,255,255,.15)';
+                            cnt.style.color = '#ffffff';
+                        }
                     } else {
-                        btn.style.cssText = '';
-                        btn.className = 'px-5 py-2 text-sm font-medium rounded-t-lg text-slate-500 hover:text-slate-300 transition-all';
+                        btn.style.cssText = 'background:transparent;color:#94a3b8;border-bottom:none;';
+                        btn.className = 'px-5 py-2 text-sm font-bold rounded-t-lg text-slate-400 hover:text-white transition-all';
+                        const cnt = btn.querySelector('span');
+                        if (cnt) {
+                            if (t === 'solicitudes') {
+                                cnt.style.background = 'rgba(239,68,68,.15)';
+                                cnt.style.color = '#fca5a5';
+                            } else {
+                                cnt.style.background = 'rgba(255,255,255,.08)';
+                                cnt.style.color = '#94a3b8';
+                            }
+                        }
                     }
                 });
                 if (tab === 'dashboard') { collapsedGroups = {}; renderTable(); }
